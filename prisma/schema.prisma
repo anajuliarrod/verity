@@ -1,0 +1,61 @@
+// Verity — Prisma schema
+// SQLite por padrão (zero-setup). Postgres-ready: trocar `provider` e `DATABASE_URL`.
+// Sem SQL cru dependente de dialeto.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  wallet         String?  @unique
+  githubUsername String?  @unique
+  githubId       String?  @unique
+  name           String?
+  headline       String?
+  avatarUrl      String?
+  handle         String   @unique
+  createdAt      DateTime @default(now())
+  contributions  Contribution[]
+}
+
+model Contribution {
+  id           String   @id @default(cuid())
+  userId       String
+  source       String
+  repoOwner    String
+  repoName     String
+  type         String
+  externalId   String
+  title        String
+  url          String
+  occurredAt   DateTime
+  status       String   @default("PENDING")
+  evidence     String?
+  raw          String?
+  attestation  Attestation?
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, source, repoOwner, repoName, type, externalId])
+}
+
+model Attestation {
+  id             String   @id @default(cuid())
+  contributionId String   @unique
+  issuer         String
+  issuerPubkey   String?
+  subjectWallet  String
+  network        String   @default("devnet")
+  mode           String   @default("mock")
+  signature      String?
+  attestationPda String?
+  explorerUrl    String?
+  payload        String
+  issuedAt       DateTime @default(now())
+  contribution   Contribution @relation(fields: [contributionId], references: [id])
+}

@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+:root {
+  /* Marca */
+  --verity-primary: #754cff;
+  --verity-primary-hover: #6438ff;
+  --verity-violet-mid: #8e53fd;
+  --verity-violet-deep: #3c09d2;
+  --verity-violet-light: #cbb6fb;
+  --verity-tint: #f0e3ff;
+  --verity-blob: #dbd2fd;
+  --verity-blob-soft: #e6e2fd;
+
+  /* Neutros */
+  --verity-bg: #f8f9fd;
+  --verity-surface: #ffffff;
+  --verity-ink: #0b0b1f;
+  --verity-ink-muted: #5b5b77;
+  --verity-border: #e8e6f5;
+
+  /* Superfície escura (cartão de credencial) */
+  --verity-night: #181558;
+  --verity-night-deep: #070939;
+  --verity-night-2: #221e6b;
+
+  /* Estado verificado */
+  --verity-verified: #10b981;
+  --verity-verified-bg: #dbf6ef;
+
+  /* Solana accent */
+  --solana-teal: #14f195;
+  --solana-purple: #9945ff;
+
+  /* Raio */
+  --radius-card: 16px;
+  --radius-pill: 999px;
+  --radius-input: 12px;
+
+  /* Sombra */
+  --shadow-brand: 0 8px 32px rgba(117, 76, 255, 0.1);
+
+  /* Fontes (preenchidas por next/font em layout.tsx) */
+  --font-display: "Outfit", "Poppins", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-verity-primary: var(--verity-primary);
+  --color-verity-primary-hover: var(--verity-primary-hover);
+  --color-verity-violet-mid: var(--verity-violet-mid);
+  --color-verity-violet-deep: var(--verity-violet-deep);
+  --color-verity-violet-light: var(--verity-violet-light);
+  --color-verity-tint: var(--verity-tint);
+  --color-verity-blob: var(--verity-blob);
+  --color-verity-blob-soft: var(--verity-blob-soft);
+
+  --color-verity-bg: var(--verity-bg);
+  --color-verity-surface: var(--verity-surface);
+  --color-verity-ink: var(--verity-ink);
+  --color-verity-ink-muted: var(--verity-ink-muted);
+  --color-verity-border: var(--verity-border);
+
+  --color-verity-night: var(--verity-night);
+  --color-verity-night-deep: var(--verity-night-deep);
+  --color-verity-night-2: var(--verity-night-2);
+
+  --color-verity-verified: var(--verity-verified);
+  --color-verity-verified-bg: var(--verity-verified-bg);
+
+  --color-solana-teal: var(--solana-teal);
+  --color-solana-purple: var(--solana-purple);
+
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
+  --radius-input: var(--radius-input);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+}
+
+body {
+  background: var(--verity-bg);
+  color: var(--verity-ink);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
+
+/* Gradiente da marca */
+.grad-brand {
+  background: linear-gradient(135deg, #cbb6fb 0%, #8e53fd 45%, #3c09d2 100%);
+}
+
+.grad-brand-text {
+  background: linear-gradient(135deg, #8e53fd 0%, #3c09d2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Gradiente do cartão escuro */
+.grad-night {
+  background: linear-gradient(140deg, #221e6b 0%, #181558 55%, #070939 100%);
+}
+
+.shadow-brand {
+  box-shadow: var(--shadow-brand);
+}
+
+/* Anel de foco acessível, consistente com a marca */
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--verity-primary);
+  outline-offset: 2px;
+}
+
+* {
+  border-color: var(--verity-border);
+}
+
+::selection {
+  background: var(--verity-tint);
+  color: var(--verity-ink);
+}
