@@ -2,10 +2,10 @@
  * Núcleo de emissão de attestations. `issueAttestation({ contributionId })`
  * degrada graciosamente nesta ordem, nunca lançando para o chamador de UI:
  *
- *   1. `sas`  — Solana Attestation Service real em devnet (via `sas-lib`).
- *   2. `memo` — transação devnet com o Memo Program, carregando o hash
+ *   1. `sas`: Solana Attestation Service real em devnet (via `sas-lib`).
+ *   2. `memo`: transação devnet com o Memo Program, carregando o hash
  *               canônico do payload (`verity.poc.v1:<hash>`).
- *   3. `mock` — assinatura determinística simulada (sem chave configurada),
+ *   3. `mock`: assinatura determinística simulada (sem chave configurada),
  *               sempre marcada como `mode: "mock"` para a UI avisar que é
  *               modo demonstração.
  *
@@ -128,7 +128,7 @@ async function ensureCredentialAndSchema(
       credential: credentialPda,
       schema: schemaPda,
       name: SCHEMA_NAME,
-      description: "Verity Proof of Contribution — GitHub v1",
+      description: "Verity Proof of Contribution (GitHub v1)",
       layout: Uint8Array.from(SCHEMA_LAYOUT),
       fieldNames: SCHEMA_FIELD_NAMES,
     });
@@ -191,7 +191,7 @@ async function attemptMemo(payloadHash: string): Promise<OnChainResult> {
   const issuer = await getIssuerSigner();
   if (!issuer) {
     throw new Error(
-      "VERITY_ISSUER_SECRET_KEY não configurada — modo memo requer uma keypair com SOL de devnet",
+      "VERITY_ISSUER_SECRET_KEY não configurada: modo memo requer uma keypair com SOL de devnet",
     );
   }
 
@@ -212,7 +212,7 @@ async function attemptMemo(payloadHash: string): Promise<OnChainResult> {
   };
 }
 
-/** Assinatura simulada, determinística a partir do hash — plausível, nunca on-chain. */
+/** Assinatura simulada, determinística a partir do hash. Plausível, nunca on-chain. */
 function buildMockResult(payloadHash: string): OnChainResult {
   const first = createHash("sha256").update(`verity-mock:${payloadHash}`).digest();
   const second = createHash("sha256").update(first).digest();
@@ -233,7 +233,7 @@ function buildMockResult(payloadHash: string): OnChainResult {
  * brief), monta o payload da credencial e tenta sas -> memo -> mock.
  *
  * `forceMode: "mock"` pula as tentativas on-chain mesmo com um emissor
- * configurado — usado pelo seed de demonstração para não gastar SOL/tempo
+ * configurado: usado pelo seed de demonstração para não gastar SOL/tempo
  * de devnet emitindo várias transações reais a cada `npm run db:seed`.
  */
 export async function issueAttestation({
@@ -283,7 +283,7 @@ export async function issueAttestation({
 
   if (forceMode === "mock") {
     diagnostics.push(
-      "mock: modo forçado pelo chamador (seed de demonstração) — nenhuma tentativa on-chain foi feita.",
+      "mock: modo forçado pelo chamador (seed de demonstração). Nenhuma tentativa on-chain foi feita.",
     );
   } else if (isRealAttestationEnabled) {
     try {
@@ -293,12 +293,12 @@ export async function issueAttestation({
       );
     } catch (error) {
       diagnostics.push(
-        `sas: falhou (${errorMessage(error)}) — tentando modo memo.`,
+        `sas: falhou (${errorMessage(error)}). Tentando modo memo.`,
       );
     }
   } else {
     diagnostics.push(
-      "sas: ignorado — VERITY_ISSUER_SECRET_KEY não configurada.",
+      "sas: ignorado. VERITY_ISSUER_SECRET_KEY não configurada.",
     );
   }
 
@@ -310,7 +310,7 @@ export async function issueAttestation({
       );
     } catch (error) {
       diagnostics.push(
-        `memo: falhou (${errorMessage(error)}) — usando modo mock.`,
+        `memo: falhou (${errorMessage(error)}). Usando modo mock.`,
       );
     }
   }
@@ -318,7 +318,7 @@ export async function issueAttestation({
   if (!result) {
     result = buildMockResult(payloadHash);
     diagnostics.push(
-      "mock: nenhum emissor configurado ou disponível — assinatura simulada gerada apenas para demonstração.",
+      "mock: nenhum emissor configurado ou disponível. Assinatura simulada gerada apenas para demonstração.",
     );
   }
 

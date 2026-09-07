@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const result = await loadAttestation(attestationId);
   const title =
     result.status === "ok"
-      ? `Credencial verificada — ${result.view.attestation.payload.project} · VERITY`
+      ? `Credencial verificada: ${result.view.attestation.payload.project} · VERITY`
       : "Verificar credencial · VERITY";
   const description =
     result.status === "ok"
@@ -188,7 +188,7 @@ export default async function VerifyAttestationPage({ params }: PageProps) {
               </div>
               <p className="mt-2 text-xs text-verity-ink-muted">
                 SHA-256 do snapshot das regras de verificação. Nenhum conteúdo do projeto ou dado
-                sensível foi publicado — apenas este hash e os metadados acima vão para a Solana.
+                sensível foi publicado. Apenas este hash e os metadados acima vão para a Solana.
               </p>
             </Section>
 

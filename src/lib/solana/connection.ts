@@ -1,6 +1,6 @@
 /**
  * Conexão Solana server-side via `@solana/kit` (ex-web3.js v2). Não importe
- * este módulo em componentes client (`src/components/wallet/**`) — ele
+ * este módulo em componentes client (`src/components/wallet/**`). Ele
  * inicializa clientes RPC no top-level e não deve entrar no bundle client.
  */
 import {
@@ -55,7 +55,7 @@ export function explorerUrl(value: string, kind: ExplorerKind = "tx"): string {
 /**
  * Constrói, assina (com `feePayer` como único signer) e envia uma transação
  * com as instruções fornecidas, aguardando confirmação. Lança em caso de
- * falha — os chamadores (em `attest.ts`) tratam a degradação graciosa.
+ * falha: os chamadores (em `attest.ts`) tratam a degradação graciosa.
  */
 export async function sendInstructions(
   feePayer: KeyPairSigner,
@@ -76,7 +76,7 @@ export async function sendInstructions(
   const signature = getSignatureFromTransaction(signedTransaction);
 
   // A transação foi construída com `setTransactionMessageLifetimeUsingBlockhash`
-  // logo acima, então sabemos que ela tem lifetime de blockhash — mas a
+  // logo acima, então sabemos que ela tem lifetime de blockhash, mas a
   // assinatura genérica de `signTransactionMessageWithSigners` não preserva
   // esse refinamento de tipo, daí a asserção explícita.
   assertIsTransactionWithBlockhashLifetime(signedTransaction);

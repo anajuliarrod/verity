@@ -39,8 +39,8 @@ const STEP_META: Record<StepId, { title: string; description: string }> = {
 
 /**
  * Progresso visual dos 5 passos do fluxo (seção 7 do brief). O estado de
- * cada passo é derivado pelo chamador a partir do estado real do usuário —
- * este componente só renderiza.
+ * cada passo é derivado pelo chamador a partir do estado real do usuário.
+ * Este componente só renderiza.
  */
 export function StepFlow({ steps, className }: StepFlowProps) {
   return (

@@ -1,4 +1,4 @@
-# VERITY — Brief técnico e de marca (fonte da verdade para todos os agentes)
+# VERITY: Brief técnico e de marca (fonte da verdade para todos os agentes)
 
 > **Seu trabalho. Verificado.**
 > Proof of Contribution: transformar contribuição digital verificável em credencial
@@ -13,7 +13,7 @@ Não altere este arquivo sem instrução explícita do orquestrador.
 
 | Tema | Decisão |
 |---|---|
-| App | **Next.js 15 (App Router) + TypeScript strict + Tailwind v4** — um único deploy |
+| App | **Next.js 15 (App Router) + TypeScript strict + Tailwind v4** (um único deploy) |
 | Runtime | Node 24 (já instalado). Gerenciador: **npm** (não há pnpm/yarn na máquina) |
 | DB | **Prisma + SQLite** por padrão (`file:./dev.db`), schema **Postgres-ready** (trocar provider) |
 | Solana core | **@solana/kit** (ex-web3.js v2) + **sas-lib** (Solana Attestation Service) + `@solana/wallet-adapter-*` |
@@ -67,7 +67,7 @@ Cores medidas pixel a pixel das imagens originais. Use exatamente estes valores.
 **Gradiente do cartão escuro:** `linear-gradient(140deg,#221E6B 0%,#181558 55%,#070939 100%)`
 
 ### Tipografia
-- Display/headings: geométrica pesada, tracking apertado — **Outfit** (fallback: Poppins, system-ui).
+- Display/headings: geométrica pesada, tracking apertado. **Outfit** (fallback: Poppins, system-ui).
   Headline do hero: `font-weight:700`, `letter-spacing:-0.03em`, `line-height:1.05`.
 - Corpo/UI: **Inter**.
 - Wordmark `VERITY`: caixa alta, `font-weight:700`, `letter-spacing:0.22em`.
@@ -209,17 +209,17 @@ Todas retornam `{ ok: true, data }` ou `{ ok: false, error: { code, message } }`
 
 ---
 
-## 5. Verification Engine — regras do MVP
+## 5. Verification Engine: regras do MVP
 
 Determinístico, sem heurística. Cada regra devolve `{ id, label, passed, detail }`.
 A contribuição só vira `VERIFIED` se **todas** as regras aplicáveis passarem.
 
 **PULL_REQUEST**
-1. `author_match` — autor do PR == GitHub username vinculado ao usuário
-2. `repo_match` — PR pertence ao repositório declarado
-3. `is_merged` — `merged_at != null`
-4. `not_self_merged_fork_only` — PR feito num repo que não é do próprio autor (informativo, não bloqueia; marca `weight`)
-5. `has_content` — `additions + deletions > 0`
+1. `author_match`: autor do PR == GitHub username vinculado ao usuário
+2. `repo_match`: PR pertence ao repositório declarado
+3. `is_merged`: `merged_at != null`
+4. `not_self_merged_fork_only`: PR feito num repo que não é do próprio autor (informativo, não bloqueia; marca `weight`)
+5. `has_content`: `additions + deletions > 0`
 
 **COMMIT**: `author_match` (login ou e-mail verificado), `repo_match`, `on_default_branch`, `has_content`
 
@@ -251,9 +251,9 @@ O resultado inteiro (regras + timestamps + snapshot da evidência) é gravado em
 On-chain vai o **hash + metadados mínimos**, nunca dados sensíveis nem o conteúdo do projeto.
 
 **Modos de emissão (degradação graciosa, nesta ordem):**
-1. `sas` — SAS real em devnet (precisa `VERITY_ISSUER_SECRET_KEY` com SOL) → PDA + signature reais
-2. `memo` — transação com Memo Program em devnet carregando o hash → signature real
-3. `mock` — assinatura determinística simulada, marcada claramente na UI como "modo demonstração"
+1. `sas`: SAS real em devnet (precisa `VERITY_ISSUER_SECRET_KEY` com SOL) → PDA + signature reais
+2. `memo`: transação com Memo Program em devnet carregando o hash → signature real
+3. `mock`: assinatura determinística simulada, marcada claramente na UI como "modo demonstração"
 
 A UI **sempre** mostra qual modo foi usado. Nunca fingir que um mock é on-chain real.
 

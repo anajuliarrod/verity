@@ -16,17 +16,17 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Sem variável de ambiente dedicada (fora da seção 8 do brief) — troque para
+// Sem variável de ambiente dedicada (fora da seção 8 do brief). Troque para
 // o domínio de produção quando o deploy estiver definido.
 const APP_URL = "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
-  title: "VERITY — Seu trabalho. Verificado.",
+  title: "VERITY. Seu trabalho. Verificado.",
   description:
     "Proof of Contribution: transforme contribuição digital verificável em credencial portátil, associada à sua wallet e verificável por terceiros na Solana.",
   openGraph: {
-    title: "VERITY — Seu trabalho. Verificado.",
+    title: "VERITY. Seu trabalho. Verificado.",
     description:
       "Proof of Contribution: transforme contribuição digital verificável em credencial portátil, associada à sua wallet e verificável por terceiros na Solana.",
     images: ["/brand/verity-keyvisual.png"],

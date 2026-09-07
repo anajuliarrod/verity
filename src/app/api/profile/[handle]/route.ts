@@ -1,5 +1,5 @@
 /**
- * GET /api/profile/:handle — perfil público de reputação. Sem sessão. Só
+ * GET /api/profile/:handle: perfil público de reputação. Sem sessão. Só
  * expõe contribuições com status `VERIFIED` (com suas attestations) e
  * nenhum dado sensível.
  */

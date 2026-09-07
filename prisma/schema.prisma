@@ -1,4 +1,4 @@
-// Verity — Prisma schema
+// Verity: Prisma schema
 // Postgres para deploy em Vercel/Neon. Use `DATABASE_URL` + `DIRECT_URL`.
 // Sem SQL cru dependente de dialeto.
 

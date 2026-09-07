@@ -3,7 +3,7 @@
  *
  * Este arquivo é a fonte da verdade dos tipos usados por API, UI, engine de
  * verificação e integração Solana. Baseado nas seções 3, 4, 5 e 6 do
- * VERITY_BRIEF.md. Alterações aqui afetam todos os agentes — mantenha
+ * VERITY_BRIEF.md. Alterações aqui afetam todos os agentes. Mantenha
  * compatível com o schema Prisma (`prisma/schema.prisma`).
  *
  * Datas são sempre representadas como string ISO 8601 nos DTOs de API
@@ -94,7 +94,7 @@ export interface VerificationResult {
 }
 
 // ---------------------------------------------------------------------------
-// Payload da credencial on-chain (seção 6 do brief) — verity.poc.v1
+// Payload da credencial on-chain (seção 6 do brief): verity.poc.v1
 // ---------------------------------------------------------------------------
 
 export interface CredentialPayload {
@@ -183,7 +183,7 @@ export interface HealthStatus {
 /**
  * Resultado de reler uma attestation diretamente da rede Solana (PDA para
  * `sas`, transação para `memo`) e comparar o hash contra o que está
- * gravado no banco — a checagem independente que dá credibilidade a
+ * gravado no banco. É a checagem independente que dá credibilidade a
  * `/verify/[attestationId]`.
  */
 export interface VerifyOnChainResult {

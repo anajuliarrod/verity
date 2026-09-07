@@ -1,8 +1,8 @@
 /**
- * POST /api/auth/github/link — vincula um username do GitHub manualmente
+ * POST /api/auth/github/link: vincula um username do GitHub manualmente
  * (modo sem OAuth). Tenta enriquecer com dados públicos do GitHub (nome,
- * avatar, id), mas nunca bloqueia o vínculo se essa chamada falhar —
- * zero-setup: a régua de verificação continua funcionando com o username.
+ * avatar, id), mas nunca bloqueia o vínculo se essa chamada falhar.
+ * Zero-setup: a régua de verificação continua funcionando com o username.
  */
 
 import { z } from "zod";
@@ -12,6 +12,7 @@ import { getOctokit, mapGithubError } from "@/lib/github/client";
 import { HttpError, jsonOk, readJsonBody, withErrorHandling } from "@/app/api/_lib/http";
 import { serializeUser } from "@/app/api/_lib/serializers";
 import { generateGithubHandle, isWalletDerivedHandle } from "@/app/api/_lib/handle";
+import { enforceRateLimit } from "@/app/api/_lib/rateLimit";
 
 const bodySchema = z.object({
   username: z
@@ -33,6 +34,12 @@ export const POST = withErrorHandling(async (request) => {
   if (!user) {
     throw new HttpError("UNAUTHORIZED", "É necessário estar em uma sessão ativa.");
   }
+
+  // Esta rota chama a API pública do GitHub sempre (não é desligada pelo
+  // modo demo), então fica sujeita ao rate limit anônimo compartilhado por
+  // toda a aplicação. Limite conservador por IP para não deixar um único
+  // cliente esgotar a cota de todo mundo.
+  enforceRateLimit(request, "github-link", 10, 5 * 60 * 1000);
 
   const { username } = bodySchema.parse(await readJsonBody(request));
 

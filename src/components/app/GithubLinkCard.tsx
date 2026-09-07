@@ -8,7 +8,7 @@ import type { VerityUser } from "@/lib/types";
 import { IconGithub } from "./icons";
 
 export interface GithubLinkCardProps {
-  /** Vem de `HealthStatus.githubOAuth` — `true` quando o servidor tem client id + secret configurados. */
+  /** Vem de `HealthStatus.githubOAuth`: `true` quando o servidor tem client id + secret configurados. */
   oauthAvailable?: boolean;
   onLinked: (user: VerityUser) => void;
   className?: string;

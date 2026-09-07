@@ -16,7 +16,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     title: "Conectar wallet",
-    description: "O estudante conecta uma wallet Solana — a identidade portátil da credencial.",
+    description: "O estudante conecta uma wallet Solana: a identidade portátil da credencial.",
     icon: <IconWallet className="h-5 w-5" />,
   },
   {
@@ -31,7 +31,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Verification Engine",
-    description: "Regras determinísticas conferem autoria, repositório e status — sem heurística.",
+    description: "Regras determinísticas conferem autoria, repositório e status, sem heurística.",
     icon: <IconShieldCheck className="h-5 w-5" />,
   },
   {

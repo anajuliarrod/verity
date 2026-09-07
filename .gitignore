@@ -47,3 +47,4 @@ dev.db*
 .neon
 .claude/
 skills-lock.json
+neon.ts

@@ -1,7 +1,7 @@
 /**
- * GET /api/health — status dos modos de operação (github/solana/db) e do
+ * GET /api/health: status dos modos de operação (github/solana/db) e do
  * modo demo. Não requer sessão. `modes.solana` vem de
- * `solanaAttestationMode()` (src/lib/env.ts) — este arquivo nunca importa de
+ * `solanaAttestationMode()` (src/lib/env.ts). Este arquivo nunca importa de
  * `src/lib/solana/`, que é de outro agente.
  */
 

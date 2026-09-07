@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : `Perfil @${handle} · VERITY`;
   const description =
     result.status === "ok"
-      ? `${result.profile.stats.verifiedCount} contribuição(ões) verificada(s) na Solana — reputação portátil de ${result.profile.name ?? `@${handle}`}.`
+      ? `${result.profile.stats.verifiedCount} contribuição(ões) verificada(s) na Solana: reputação portátil de ${result.profile.name ?? `@${handle}`}.`
       : "Perfil de reputação verificável do VERITY.";
 
   return {

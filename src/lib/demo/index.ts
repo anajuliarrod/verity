@@ -1,9 +1,9 @@
 /**
- * Dataset determinístico de demonstração — o coração do "zero-setup".
+ * Dataset determinístico de demonstração: o coração do "zero-setup".
  *
  * Persona: Emanuelly (handle `emanuelly`), estudante de Engenharia de
  * Software. Contribuições plausíveis em projetos open source conhecidos,
- * com datas relativas a hoje, sem `Math.random()` — mesma entrada, mesma
+ * com datas relativas a hoje, sem `Math.random()`: mesma entrada, mesma
  * saída. Um dos PRs fica propositalmente aberto (não merged) para que a
  * régua de verificação mostre uma rejeição real na demo.
  *
@@ -27,7 +27,7 @@ export const DEMO_USER = {
   avatarUrl: "https://avatars.githubusercontent.com/u/9919?v=4",
   /**
    * Endereço devnet dedicado à persona de demonstração (sem chave privada
-   * guardada em lugar nenhum do repositório — só a chave pública é usada,
+   * guardada em lugar nenhum do repositório: só a chave pública é usada,
    * como sujeito da credencial). Gerado uma vez com `solana-keygen new`.
    */
   wallet: "87iNCozKxZ4sB3XjFwyPZEa1K5x4iezC9QxrJdhP4uge",

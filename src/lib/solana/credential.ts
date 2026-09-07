@@ -1,6 +1,6 @@
 /**
  * Construção do payload da credencial on-chain `verity.poc.v1` (seção 6 do
- * VERITY_BRIEF.md) e seu hash canônico. Este módulo é puro — sem I/O — para
+ * VERITY_BRIEF.md) e seu hash canônico. Este módulo é puro (sem I/O) para
  * ser fácil de testar e reutilizar tanto na emissão (`attest.ts`) quanto na
  * verificação (`verifyAttestation.ts`).
  */

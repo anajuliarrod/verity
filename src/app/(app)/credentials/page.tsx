@@ -82,7 +82,7 @@ export default function CredentialsPage() {
         <EmptyState
           icon={<IconShieldCheck />}
           title="Nenhuma credencial emitida ainda"
-          description="Verifique uma contribuição em Contribuições e emita a Proof of Contribution — ela aparece aqui, associada à sua wallet."
+          description="Verifique uma contribuição em Contribuições e emita a Proof of Contribution. Ela aparece aqui, associada à sua wallet."
         />
       )}
 

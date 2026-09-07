@@ -1,5 +1,5 @@
 /**
- * POST /api/session/wallet — associa uma wallet Solana à sessão atual,
+ * POST /api/session/wallet: associa uma wallet Solana à sessão atual,
  * criando o `User` se necessário (ou reaproveitando o usuário da sessão
  * atual, se ainda não tiver wallet), e grava o cookie de sessão.
  */

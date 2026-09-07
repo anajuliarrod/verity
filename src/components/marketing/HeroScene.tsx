@@ -41,7 +41,7 @@ const HERO_ATTESTATION: VerityAttestation = {
 /**
  * Recriação em HTML/CSS da cena do key visual: mock do dashboard num card
  * branco elevado, com o cartão escuro de credencial flutuando sobre o
- * canto inferior esquerdo. Puramente decorativo (aria-hidden) — o
+ * canto inferior esquerdo. Puramente decorativo (aria-hidden). O
  * conteúdo real da página está no texto do Hero.
  */
 export function HeroScene() {

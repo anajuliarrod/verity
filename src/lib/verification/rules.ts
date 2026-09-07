@@ -1,7 +1,7 @@
 /**
  * Regras do Verification Engine (seção 5 do VERITY_BRIEF.md). Cada regra é
  * uma função pura, sem I/O: `(ctx) => VerificationRuleResult`. Nenhuma regra
- * chama rede ou banco — todo dado necessário já está em `RuleContext`.
+ * chama rede ou banco. Todo dado necessário já está em `RuleContext`.
  */
 
 import type { VerificationRuleResult } from "@/lib/types";
@@ -85,7 +85,7 @@ export const prNotSelfMergedForkOnly: Rule<ValidatedPullRequestRaw> = (ctx) => {
     weight: 0,
     detail: passed
       ? `PR feito em ${ctx.repoOwner}/${ctx.repoName}, um repositório que não é do próprio autor.`
-      : `PR feito no próprio repositório do autor (${ctx.repoOwner}/${ctx.repoName}) — sinal informativo, não bloqueia a verificação.`,
+      : `PR feito no próprio repositório do autor (${ctx.repoOwner}/${ctx.repoName}): sinal informativo, não bloqueia a verificação.`,
   };
 };
 

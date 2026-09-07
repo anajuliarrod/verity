@@ -70,7 +70,7 @@ export default function ContributionsPage() {
         description:
           updated.status === "VERIFIED"
             ? "Todas as regras passaram."
-            : "Nem todas as regras passaram — expanda a linha para ver os detalhes.",
+            : "Nem todas as regras passaram. Expanda a linha para ver os detalhes.",
         tone: updated.status === "VERIFIED" ? "success" : "default",
       });
     } catch (cause) {

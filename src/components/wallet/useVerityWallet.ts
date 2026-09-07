@@ -16,7 +16,7 @@ export interface VerityWalletState {
  * Embrulha `useWallet()` do wallet-adapter e sincroniza a wallet conectada
  * com a sessão do servidor via `POST /api/session/wallet` (rota de outro
  * agente). A sincronização é best-effort: se a rota ainda não existir ou a
- * chamada falhar, a wallet segue conectada e utilizável na UI — nunca
+ * chamada falhar, a wallet segue conectada e utilizável na UI. Nunca
  * quebra por causa disso.
  */
 export function useVerityWallet(): VerityWalletState {

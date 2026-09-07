@@ -1,14 +1,14 @@
 /**
  * Extensão OPCIONAL via `solana-agent-kit`, isolada e fora do caminho
  * crítico da Verity (seção 0/2 do brief). Nenhum outro módulo deve
- * depender desta capacidade para funcionar — ela é só um "bônus" que
+ * depender desta capacidade para funcionar. Ela é só um "bônus" que
  * resume o estado do emissor em linguagem natural e permite pedir airdrop
  * em devnet a partir de um agente conversacional.
  *
  * `solana-agent-kit` e suas dependências pesadas (`@solana/web3.js`,
  * `@langchain/core`, `@openai/agents`, `ai`) só são carregadas via
  * `import()` dinâmico dentro de `getVerityAgent()`, nunca no topo do
- * módulo — assim, ninguém paga o custo de bundle por importar este
+ * módulo. Assim, ninguém paga o custo de bundle por importar este
  * arquivo, e a ausência/incompatibilidade da lib nunca quebra o build ou
  * o app: o pior caso é `getVerityAgent()` resolver para `null`.
  */
@@ -89,7 +89,7 @@ async function buildAgent(): Promise<VerityAgent | null> {
         const narrative =
           balanceSol > 0
             ? `O emissor da Verity tem ${balanceSol.toFixed(4)} SOL em ${env.solanaCluster}, suficiente para emitir attestations.`
-            : `O emissor da Verity está sem saldo em ${env.solanaCluster} — peça um airdrop antes de emitir attestations reais.`;
+            : `O emissor da Verity está sem saldo em ${env.solanaCluster}. Peça um airdrop antes de emitir attestations reais.`;
 
         return {
           issuerPubkey: keypair.publicKey.toBase58(),
@@ -123,8 +123,8 @@ async function buildAgent(): Promise<VerityAgent | null> {
       },
     };
   } catch {
-    // `solana-agent-kit` ausente, incompatível, ou falhou ao inicializar —
-    // a capacidade é opcional, então degradamos para `null` silenciosamente.
+    // `solana-agent-kit` ausente, incompatível, ou falhou ao inicializar.
+    // A capacidade é opcional, então degradamos para `null` silenciosamente.
     return null;
   }
 }

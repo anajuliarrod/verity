@@ -1,5 +1,5 @@
 /**
- * Verification Engine — orquestra as regras puras de `rules.ts` sobre uma
+ * Verification Engine: orquestra as regras puras de `rules.ts` sobre uma
  * contribuição e devolve um `VerificationResult` determinístico (mesma
  * entrada, mesma saída). A contribuição só vira `VERIFIED` se todas as
  * regras bloqueantes (weight !== 0) passarem.
@@ -40,7 +40,7 @@ export interface VerifiableUser {
   githubUsername: string | null;
 }
 
-/** Serialização estável (chaves ordenadas) — `JSON.stringify` não garante ordem. */
+/** Serialização estável (chaves ordenadas): `JSON.stringify` não garante ordem. */
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
@@ -90,7 +90,7 @@ function buildResult(
 
 /**
  * Roda o Verification Engine sobre uma contribuição e devolve o resultado
- * completo (regras + hash de evidência). Não faz I/O — persistir o
+ * completo (regras + hash de evidência). Não faz I/O: persistir o
  * resultado é responsabilidade de quem chama.
  */
 export function verifyContribution(

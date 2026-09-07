@@ -1,7 +1,7 @@
 /**
  * Validação em runtime do payload `raw` (JSON persistido em `Contribution.raw`)
  * antes de rodar as regras do Verification Engine. `raw` chega como
- * `unknown` (JSON.parse de uma coluna de texto) — nunca confiamos nele sem
+ * `unknown` (JSON.parse de uma coluna de texto). Nunca confiamos nele sem
  * checar a forma primeiro.
  */
 

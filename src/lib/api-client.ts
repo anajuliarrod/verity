@@ -5,7 +5,7 @@
  * (não encontrado, não autorizado, etc.) de forma específica.
  *
  * As rotas de API são construídas por outro agente em paralelo e podem
- * ainda não existir — todo helper aqui é seguro de chamar antes disso: a
+ * ainda não existir. Todo helper aqui é seguro de chamar antes disso: a
  * falha vira um `ApiError` tratável pela UI, nunca uma exceção não tratada.
  */
 
@@ -33,7 +33,7 @@ export class ApiError extends Error {
 
 /**
  * Resolve a URL de uma rota de API. No navegador, um caminho relativo já
- * basta. No servidor (Server Components), `fetch` exige uma URL absoluta —
+ * basta. No servidor (Server Components), `fetch` exige uma URL absoluta:
  * usamos a mesma base de `NEXT_PUBLIC_APP_URL` (ou o padrão local) definida
  * em `app/layout.tsx`.
  */

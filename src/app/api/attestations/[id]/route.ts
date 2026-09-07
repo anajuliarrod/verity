@@ -1,5 +1,5 @@
 /**
- * GET /api/attestations/:id — rota pública (sem sessão) usada pela página
+ * GET /api/attestations/:id: rota pública (sem sessão) usada pela página
  * `/verify/[attestationId]`. Devolve a attestation, a contribuição associada
  * e o resultado da checagem on-chain (`verifyOnChain`), para que qualquer
  * terceiro possa validar a credencial de forma independente.

@@ -1,6 +1,6 @@
 /**
  * Helpers compartilhados pelas rotas de `src/app/api/**` (exceto
- * `attestations/`, de outro agente). Não é uma rota — não exporta nenhum
+ * `attestations/`, de outro agente). Não é uma rota. Não exporta nenhum
  * handler HTTP, então o App Router o ignora no roteamento.
  */
 

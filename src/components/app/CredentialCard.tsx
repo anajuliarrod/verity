@@ -44,7 +44,7 @@ function SolanaMark({ className }: { className?: string }) {
 }
 
 /**
- * O cartão escuro "Proof of Contribution" — peça central do produto,
+ * O cartão escuro "Proof of Contribution": peça central do produto,
  * recriada a partir do key visual. `mode === "mock"` exibe uma marca
  * discreta e honesta de modo demonstração; nunca finge ser on-chain real.
  */
@@ -102,7 +102,7 @@ export function CredentialCard({ attestation, className, footer }: CredentialCar
 
         {isMock && (
           <div className="relative mt-4 rounded-input border border-white/15 bg-white/10 px-2.5 py-1.5 text-[11px] font-medium text-white/80">
-            Modo demonstração — assinatura simulada, sem transação real na Solana.
+            Modo demonstração: assinatura simulada, sem transação real na Solana.
           </div>
         )}
       </div>

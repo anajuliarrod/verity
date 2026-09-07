@@ -1,7 +1,7 @@
 /**
  * Formato normalizado interno de contribuições vindas do GitHub (real ou
  * demo). Não faz parte do contrato compartilhado em `src/lib/types.ts`
- * (que é o DTO já persistido/exposto pela API) — este é o formato
+ * (que é o DTO já persistido/exposto pela API). Este é o formato
  * pré-persistência produzido tanto pelo cliente GitHub real quanto pelo
  * dataset determinístico de demonstração, para que o resto do sistema não
  * saiba a diferença entre as duas origens.

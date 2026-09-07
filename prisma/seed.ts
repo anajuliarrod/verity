@@ -10,15 +10,32 @@ const prisma = new PrismaClient();
  * Semeia a Emanuelly demo com o dataset determinístico de contribuições
  * (algumas já verificadas, uma propositalmente rejeitada) e emite
  * attestations para as verificadas, para que `/p/emanuelly` tenha conteúdo
- * real logo após `npm run db:seed`. Idempotente: upsert por chave única —
- * nunca reemite uma attestation que já existe.
+ * real logo após `npm run db:seed`. Idempotente: upsert por chave única.
+ * Nunca reemite uma attestation que já existe.
  *
- * Só a primeira contribuição verificada tenta emissão real (sas -> memo,
- * conforme `VERITY_ISSUER_SECRET_KEY`); as demais são emitidas em modo
- * `mock` de propósito, para não gastar SOL/tempo de devnet a cada seed e
- * para a UI mostrar os dois modos lado a lado, sempre rotulados com honestidade.
+ * Por padrão, toda emissão roda em modo `mock`: não gasta SOL de devnet e
+ * não gera assinatura nova. Isso é necessário porque `npm run demo:reset`
+ * roda `prisma db push --force-reset`, que apaga a tabela `Attestation` e
+ * derrota a idempotência normal do seed; sem esse padrão seguro, cada reset
+ * emitiria uma transação real na Solana devnet, gastando SOL do emissor e
+ * invalidando qualquer assinatura já publicada em documentação ou material
+ * de apresentação.
+ *
+ * Só com a variável de ambiente `VERITY_SEED_ISSUE_REAL` preenchida (opt-in
+ * explícito) a primeira contribuição verificada tenta emissão real (sas ->
+ * memo, conforme `VERITY_ISSUER_SECRET_KEY`); as demais continuam sempre em
+ * modo `mock`, para não gastar SOL/tempo de devnet a cada seed e para a UI
+ * mostrar os dois modos lado a lado, sempre rotulados com honestidade.
  */
 async function main() {
+  const issueRealAttestation = Boolean(process.env.VERITY_SEED_ISSUE_REAL);
+  console.log(
+    issueRealAttestation
+      ? "Modo do seed: emissão real habilitada (VERITY_SEED_ISSUE_REAL definida). " +
+          "A primeira attestation verificada pode gastar SOL de devnet e gerar uma assinatura nova."
+      : "Modo do seed: mock (padrão). Nenhuma tentativa on-chain real será feita, nenhum SOL será gasto.",
+  );
+
   const user = await prisma.user.upsert({
     where: { handle: DEMO_USER.handle },
     update: {
@@ -98,7 +115,8 @@ async function main() {
       });
 
       if (!existingAttestation) {
-        const forceMode = realAttestationIssued ? "mock" : undefined;
+        const forceMode =
+          realAttestationIssued || !issueRealAttestation ? "mock" : undefined;
         try {
           const issued = await issueAttestation({
             contributionId: saved.id,
@@ -139,6 +157,11 @@ async function main() {
   console.log(
     `Seed concluído: usuário @${user.handle} com ${contributions.length} contribuições ` +
       `(${verifiedCount} verificadas, ${attestedCount} com credencial emitida).`,
+  );
+  console.log(
+    realAttestationIssued
+      ? "Resultado: uma attestation real foi emitida nesta execução (SOL de devnet gasto, assinatura nova gerada)."
+      : "Resultado: nenhuma attestation real foi emitida nesta execução (tudo em modo mock, sem custo de SOL).",
   );
 }
 

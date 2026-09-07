@@ -12,28 +12,82 @@ de dados da aplicação.
 
 ---
 
-## Demonstração (3 comandos, sem Docker, sem credenciais)
+## Demonstração local
 
-Pré-requisitos: Node 20 ou superior e npm.
+Pré-requisitos: Node 20 ou superior, npm, e um banco Postgres alcançável (o schema usa
+`provider = "postgresql"`, não há mais fallback automático para SQLite). O caminho mais rápido é
+criar um projeto gratuito no [Neon](https://neon.tech) (sem cartão de crédito) e copiar as duas
+connection strings que ele fornece (pooler e direta).
 
 ```bash
+cp .env.example .env
+# editar .env: preencher DATABASE_URL (pooler do Neon) e DIRECT_URL (conexão direta)
 npm install
 npm run db:push && npm run db:seed
 npm run dev
 ```
 
-Abrir [http://localhost:3000](http://localhost:3000). A aplicação sobe 100% navegável em modo
-demonstração: `/p/emanuelly` já mostra um perfil com contribuições verificadas e credenciais
-emitidas, sem nenhuma variável de ambiente configurada. Este fluxo foi validado de ponta a ponta
-neste repositório: build de produção (`npm run build` seguido de `npm run start`), checagem de
-tipos (`npm run typecheck`) e as rotas `/`, `/p/emanuelly` e `/api/health` respondendo HTTP 200
-com dados reais do banco semeado.
+Abrir [http://localhost:3000](http://localhost:3000). Com o banco preenchido pelo seed,
+`/p/emanuelly` mostra um perfil com contribuições verificadas e credenciais emitidas. As demais
+integrações (GitHub, Solana) continuam com degradação automática e não exigem configuração
+adicional: sem `VERITY_ISSUER_SECRET_KEY` a emissão cai para o modo `mock`, e sem `GITHUB_TOKEN` as
+chamadas à API do GitHub seguem anônimas (ou em modo demo, se `NEXT_PUBLIC_DEMO_MODE` estiver
+`on`/`auto` sem token).
 
 Para recriar o banco do zero:
 
 ```bash
 npm run demo:reset
 ```
+
+**Atenção antes de rodar `demo:reset` ou `db:seed` com um emissor real configurado**: o script
+apaga e recria o banco por completo (`prisma db push --force-reset`) e depois roda o seed de novo.
+Como o seed só reaproveita uma attestation real quando encontra uma já registrada no banco para
+aquela contribuição, e o reset apaga esse registro, a primeira contribuição verificada emite uma
+attestation nova de verdade na Solana devnet a cada `demo:reset`, com `VERITY_ISSUER_SECRET_KEY`
+configurada. Isso consome SOL de devnet do emissor e gera uma assinatura diferente da vez anterior,
+invalidando qualquer transação ou PDA já citados em documentação (ver seção "Prova on-chain"
+abaixo). Sem `VERITY_ISSUER_SECRET_KEY` configurada, o reset não gasta SOL nenhum: toda emissão cai
+no modo `mock`.
+
+**Nota de honestidade sobre este README**: o projeto começou com Prisma+SQLite, o que permitia um
+`npm install && npm run dev` verdadeiramente sem nenhuma credencial. Depois da migração para
+Postgres (Neon), esse zero-setup total deixou de existir: um banco Postgres alcançável (mesmo que
+gratuito) é hoje um pré-requisito real para rodar o projeto localmente ou em produção. O restante
+das integrações (GitHub, Solana) continua opcional, com degradação automática.
+
+---
+
+## Deploy em produção
+
+A aplicação está publicada na Vercel, com Postgres gerenciado pelo Neon:
+
+**[https://verity-seven-xi.vercel.app](https://verity-seven-xi.vercel.app)**
+
+Status confirmado em `2026-09-07`, testado diretamente com `curl` contra a URL acima e contra o RPC
+público da devnet (`https://api.devnet.solana.com`), não é suposição nem alegação da própria
+aplicação:
+
+- Landing (`/`) e as páginas `/dashboard`, `/contributions`, `/credentials`, `/settings`,
+  `/p/emanuelly` e `/verify/<id>` respondem HTTP 200 (a casca da aplicação carrega).
+- `GET /api/health` responde `ok`, com `modes.db: "connected"` e `modes.solana: "sas"` (há uma
+  chave de emissor real configurada em produção).
+- **O schema do banco de produção foi aplicado e o banco foi semeado.** `npx prisma migrate
+  deploy` rodou com sucesso contra o Postgres de produção do Neon (migration
+  `20260907142615_init`), seguido de `npm run db:seed`. Como resultado, `GET
+  /api/profile/emanuelly` responde HTTP 200 com dados reais (a persona de demonstração completa,
+  com seis contribuições verificadas e uma reprovada), e `GET /api/attestations/:id` responde
+  `verification.onChain: true` e `verification.matches: true` para a credencial real. A
+  demonstração completa descrita em "Roteiro de demonstração" já funciona direto na URL de
+  produção, não só localmente; ver a seção "Prova on-chain" abaixo para a credencial real
+  verificada em produção, com transação e conta confirmadas diretamente no RPC da devnet.
+- **Pendência restante**: confirmar a variável `VERITY_SESSION_SECRET` na Vercel e redeployar.
+  Como o repositório é público, o valor de fallback usado quando essa variável está ausente é
+  visível no código-fonte; enquanto o deploy ativo não tiver `VERITY_SESSION_SECRET` definida e
+  redeployada, sessão por wallet, vínculo de GitHub e emissão de attestation continuam expostas a
+  esse fallback conhecido, em vez de falharem explicitamente como o código já prevê para produção
+  (ver `DEPLOY.md`, seção 3). É a única ação de configuração que ainda falta para fechar esse
+  ponto.
 
 ---
 
@@ -61,8 +115,9 @@ Um único deploy Next.js 15 (App Router), TypeScript em modo strict e Tailwind v
 quatro camadas:
 
 1. **Fundação**: design system (`src/components/ui`, `src/components/brand`), contrato de tipos
-   compartilhado (`src/lib/types.ts`) e Prisma com SQLite (`prisma/schema.prisma`, com schema
-   pronto para trocar para Postgres apenas mudando o provider e `DATABASE_URL`).
+   compartilhado (`src/lib/types.ts`) e Prisma com Postgres (`prisma/schema.prisma`, banco gerenciado
+   pelo Neon em produção, com `DATABASE_URL` apontando para o pooler e `DIRECT_URL` para a conexão
+   direta, usada pelas migrações).
 2. **Backend**: sessão por cookie (`src/lib/session.ts`), cliente GitHub com OAuth opcional
    (`src/lib/github/**`), motor de verificação determinístico (`src/lib/verification/**`),
    dataset de demonstração (`src/lib/demo/**`) e rotas REST (`src/app/api/**`).
@@ -171,21 +226,31 @@ disponível no cluster de destino. Na prática, em devnet o modo `sas` funciona 
 
 ## Prova on-chain
 
-O banco semeado por `npm run db:seed` contém uma attestation real em devnet, emitida pelo fluxo
-completo da aplicação (não por script isolado), para a contribuição
-`microsoft/TypeScript#56780` da persona de demonstração Emanuelly:
+O banco de produção, semeado em `2026-09-07` por `npm run db:seed` contra o Postgres do Neon,
+contém uma attestation real em devnet, emitida pelo fluxo completo da aplicação (não por script
+isolado), para a contribuição `microsoft/TypeScript#56780` da persona de demonstração Emanuelly.
+Três verificações independentes confirmam a mesma credencial e se checam mutuamente:
 
-- **Transação (assinatura):**
-  [`z98gfn9J9xDEfnWWrzkVaHajoxPnRYdXVDwGzyGia8uSrHfGrJzWPdrBy3gWU8cYsHevuZBYLWLNW5o2Jf8oQCt`](https://explorer.solana.com/tx/z98gfn9J9xDEfnWWrzkVaHajoxPnRYdXVDwGzyGia8uSrHfGrJzWPdrBy3gWU8cYsHevuZBYLWLNW5o2Jf8oQCt?cluster=devnet)
-- **Attestation PDA:**
-  [`CQtWQDHmBm4fZJyWw8TRF6nT9QvpgcvZq4mTiwFYoRTk`](https://explorer.solana.com/address/CQtWQDHmBm4fZJyWw8TRF6nT9QvpgcvZq4mTiwFYoRTk?cluster=devnet)
+1. **Página pública de verificação, na própria aplicação em produção:**
+   [`https://verity-seven-xi.vercel.app/verify/cmtrco3960006va31l2h7ak97`](https://verity-seven-xi.vercel.app/verify/cmtrco3960006va31l2h7ak97)
+2. **Transação (assinatura), no Solana Explorer:**
+   [`28xqQjKmvDwQ1TULXfJUvPHGdP31Yj1bGzQeTxoZ2hhfFdTRYrJZQ2YQL31JzsuxTg7qezF2YHobV83aFAvevD2j`](https://explorer.solana.com/tx/28xqQjKmvDwQ1TULXfJUvPHGdP31Yj1bGzQeTxoZ2hhfFdTRYrJZQ2YQL31JzsuxTg7qezF2YHobV83aFAvevD2j?cluster=devnet)
+3. **Conta do Attestation PDA, também no Solana Explorer:**
+   [`6HbyFVWJs5WPZiem6YF5JLLqzt3THCTBF4hdShCKgEUR`](https://explorer.solana.com/address/6HbyFVWJs5WPZiem6YF5JLLqzt3THCTBF4hdShCKgEUR?cluster=devnet)
 
-Snapshot validado em `2026-09-07` após `npm run demo:reset`: a transação está confirmada, sem erro,
-e a conta do PDA pertence ao programa do Solana Attestation Service, com os campos `verity.poc.v1`
-e `VERIFIED` codificados nos dados on-chain.
+Validado em `2026-09-07` consultando o RPC da devnet diretamente (não apenas a interface do
+Explorer ou a aplicação): a transação está confirmada, sem erro (`err: null`), consumindo 6118 de
+200000 unidades de computação disponíveis; a conta do PDA tem 338 bytes, pertence ao programa do
+Solana Attestation Service (`22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG`) e contém em texto os
+campos `verity.poc.v1` e `VERIFIED`, com o hash de evidência
+`3b768105980bfea7575acd57c7385b99823ba7ed8286ec5892822b2a09ee4bc4` codificado nos dados on-chain,
+igual ao hash retornado por `GET /api/attestations/cmtrco3960006va31l2h7ak97` em produção.
 
-Esse valor muda sempre que o demo é reinicializado com uma base nova, então trate esta seção como
-um snapshot do último reset, não como um identificador permanente.
+Esse valor muda sempre que o banco é reinicializado com uma base nova (ver aviso sobre
+`demo:reset` em "Demonstração local"), então trate esta seção como um snapshot do seed mais
+recente aplicado em produção, não como um identificador permanente. O emissor de devnet usado em
+produção (`ApnZZgybYK9fNQKuzpMuG5zxTmFnrKMtdcyD3V4AECKC`) ficou com aproximadamente 0,178 SOL após
+este seed; cada seed com emissão real consome cerca de 0,0024 SOL desse saldo.
 
 As outras cinco credenciais da Emanuelly são emitidas em modo `mock` de propósito, para não gastar
 SOL de devnet a cada `npm run db:seed`, e aparecem claramente rotuladas como "modo demonstração"
@@ -196,7 +261,12 @@ Qualquer pessoa pode reproduzir essa checagem sem confiar no banco da aplicaçã
 o hash on-chain com o hash gravado localmente. É a mesma lógica de `verifyOnChain()`
 (`src/lib/solana/verifyAttestation.ts`), exposta publicamente em `GET /api/attestations/:id`, que
 retorna `verification.onChain: true` e `verification.matches: true` quando a checagem confere,
-conforme observado ao consultar essa rota localmente durante a validação deste README.
+conforme observado ao consultar essa rota diretamente em produção.
+
+Esta transação e este PDA são permanentes na devnet independente de qualquer banco de dados
+(Solana não "esquece" uma conta confirmada). O que depende do banco é conseguir *ver* essa
+attestation pela interface: em produção, ela já aparece em `/p/emanuelly`, porque o banco foi
+migrado e semeado nesta rodada (ver "Deploy em produção" acima).
 
 ---
 
@@ -234,12 +304,15 @@ conforme observado ao consultar essa rota localmente durante a validação deste
 
 ## Variáveis de ambiente
 
-Nenhuma variável é obrigatória além de `DATABASE_URL`, que já tem um valor padrão funcional. Tudo
-que falta se traduz em degradação automática, nunca em um erro fatal.
+`DATABASE_URL` e `DIRECT_URL` são obrigatórias (Postgres, ver seção "Deploy em produção" acima).
+Todas as outras variáveis são opcionais: o que faltar se traduz em degradação automática, nunca em
+um erro fatal, com uma única exceção de segurança (`VERITY_SESSION_SECRET`, detalhada abaixo).
 
-| Variável | Ausente (padrão) | Preenchida |
+| Variável | Ausente | Preenchida |
 |---|---|---|
-| `DATABASE_URL` | Sempre tem um padrão: `file:./dev.db` | Aponta para outro banco (por exemplo, Postgres em produção) |
+| `DATABASE_URL` | **Obrigatória.** Sem ela o Prisma não conecta a nenhum banco. Deve apontar para o pooler do Postgres (Neon: endpoint com `-pooler` no host). | Aponta para o banco Postgres usado em runtime. |
+| `DIRECT_URL` | **Obrigatória para rodar migrações** (`db push`/`migrate`). Deve apontar para a conexão direta (sem pooler) do mesmo banco. | Usada só por `prisma migrate`/`db push`, nunca em runtime. |
+| `VERITY_SESSION_SECRET` | Em desenvolvimento, usa um valor fixo só para não travar o zero-setup local. **Em produção (`NODE_ENV=production`), a ausência desta variável faz o app falhar explicitamente** ao assinar/validar sessão, em vez de usar esse valor conhecido publicamente neste repositório. | Segredo usado para assinar o cookie de sessão. Gerar com `openssl rand -hex 32`. |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | `devnet` | Rede usada para etiquetar e exibir as credenciais |
 | `NEXT_PUBLIC_SOLANA_RPC` | RPC público de devnet (mais lento, sujeito a limite de requisições) | Endpoint dedicado (Helius, QuickNode, entre outros), mais rápido e estável |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth desativado; vínculo manual por username | Habilita "Conectar com GitHub" via OAuth real na tela de vínculo |
@@ -248,7 +321,9 @@ que falta se traduz em degradação automática, nunca em um erro fatal.
 | `NEXT_PUBLIC_DEMO_MODE` | `auto`, decide sozinho a partir das variáveis acima | `on` força o dataset determinístico do GitHub mesmo com `VERITY_ISSUER_SECRET_KEY` configurada; `off` força tentar as integrações reais mesmo sem estarem prontas |
 
 O arquivo `.env` está listado em `.gitignore` (com exceção de `.env.example`, que documenta os
-valores padrão). Uma chave de emissor real nunca deve ser commitada.
+valores padrão, sem nenhum segredo real). Uma chave de emissor real, string de conexão com senha,
+ou `VERITY_SESSION_SECRET` real nunca devem ser commitados. O histórico do git deste repositório
+(público) foi auditado e nenhum segredo real foi encontrado em nenhum commit.
 
 ---
 
@@ -260,11 +335,21 @@ valores padrão). Uma chave de emissor real nunca deve ser commitada.
   automática para memo e depois para mock.
 - Verificação pública independente, que rederiva o PDA e recompara o hash em vez de confiar
   cegamente no banco de dados.
-- Fluxo 100% navegável sem nenhuma credencial configurada.
+- Fluxo 100% navegável sem nenhuma credencial de GitHub ou Solana configurada (só o Postgres é
+  obrigatório, ver "Variáveis de ambiente").
+- Migration inicial versionada em `prisma/migrations/`, já aplicada em produção via `prisma migrate
+  deploy`, para que produção use esse comando em vez de `db push` daqui em diante.
+- Rate limiting simples, em memória e por IP, nas duas rotas que chamam a API pública do GitHub
+  (`POST /api/auth/github/link` e `GET /api/contributions?refresh=1`), para não deixar um único
+  cliente esgotar a cota anônima compartilhada por toda a aplicação.
 
 **Fora do escopo (limitações conhecidas):**
 - Sem suporte a mainnet. Tudo roda em devnet; não há avaliação de custo ou segurança para
   produção.
+- O rate limiting acima é em memória por instância serverless, não distribuído: é uma proteção
+  básica contra abuso casual, não um limite garantido sob múltiplas instâncias simultâneas da
+  Vercel. Um limite real exigiria um store compartilhado (ex. Upstash Redis), fora de escopo aqui
+  por exigir uma dependência/infra nova.
 - Sem revogação de credencial. Uma attestation emitida não pode ser invalidada pela aplicação
   (o Solana Attestation Service suporta revogação, mas isso não foi implementado aqui).
 - Sem regras de verificação para o tipo `REVIEW`, apesar de esse tipo existir no contrato de

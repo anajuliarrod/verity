@@ -1,6 +1,6 @@
 /**
  * Carrega o keypair emissor da Verity a partir de `VERITY_ISSUER_SECRET_KEY`.
- * Nunca lança na importação do módulo nem fora dela — retorna `null` sempre
+ * Nunca lança na importação do módulo nem fora dela: retorna `null` sempre
  * que a chave estiver ausente ou for inválida, permitindo a degradação
  * graciosa sas -> memo -> mock em `attest.ts`.
  */

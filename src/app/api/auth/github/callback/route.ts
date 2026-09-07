@@ -1,10 +1,10 @@
 /**
- * GET /api/auth/github/callback — callback do GitHub OAuth. Valida `state`
+ * GET /api/auth/github/callback: callback do GitHub OAuth. Valida `state`
  * contra o cookie gravado em `/start` (CSRF), troca o `code` por um token
  * de acesso, busca o usuário autenticado e vincula à sessão atual.
  *
  * Por ser um redirecionamento de navegador (parte do fluxo OAuth padrão),
- * esta rota não devolve o envelope JSON — redireciona de volta para
+ * esta rota não devolve o envelope JSON. Redireciona de volta para
  * `/settings` com um parâmetro de resultado que a UI usa para mostrar
  * sucesso/erro.
  */

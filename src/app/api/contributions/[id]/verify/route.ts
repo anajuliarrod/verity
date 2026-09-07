@@ -1,5 +1,5 @@
 /**
- * POST /api/contributions/:id/verify — roda o Verification Engine sobre uma
+ * POST /api/contributions/:id/verify: roda o Verification Engine sobre uma
  * contribuição do usuário da sessão, persiste `status` + `evidence` e
  * devolve a `VerityContribution` atualizada. Rejeita se a contribuição não
  * pertence ao usuário da sessão.

@@ -17,7 +17,7 @@ export function formatDate(
   },
 ): string {
   const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "N/D";
   return new Intl.DateTimeFormat("pt-BR", options).format(date);
 }
 

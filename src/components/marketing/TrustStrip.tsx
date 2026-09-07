@@ -23,7 +23,7 @@ export function TrustStrip() {
         </h2>
         <p className="mt-3 text-verity-ink-muted">
           A Solana guarda a prova, não o conteúdo. Só o essencial para verificar
-          vai on-chain — o resto fica com você.
+          vai on-chain. O resto fica com você.
         </p>
       </div>
 

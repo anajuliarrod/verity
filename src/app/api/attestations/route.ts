@@ -1,5 +1,5 @@
 /**
- * POST /api/attestations — emite a attestation de uma contribuição já
+ * POST /api/attestations: emite a attestation de uma contribuição já
  * `VERIFIED` do usuário da sessão. Rejeita se a contribuição não existir,
  * não pertencer ao usuário, não estiver verificada, ou já tiver attestation.
  * A emissão em si (sas -> memo -> mock) é feita por `issueAttestation`

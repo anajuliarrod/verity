@@ -1,5 +1,5 @@
 /**
- * GitHub OAuth — Web Application Flow. Só fica ativo quando
+ * GitHub OAuth: Web Application Flow. Só fica ativo quando
  * `isGithubOAuthEnabled` é true (client id + secret configurados). Escopo
  * mínimo (`read:user`), sem acesso a repositórios privados.
  */

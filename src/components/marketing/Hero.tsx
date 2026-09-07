@@ -24,7 +24,7 @@ export function Hero() {
 
           <p className="mt-6 max-w-md text-base text-verity-ink-muted sm:text-lg">
             Conecte sua wallet e seu GitHub. A Verity transforma contribuições
-            reais — Pull Requests, commits, issues — em credenciais
+            reais (Pull Requests, commits, issues) em credenciais
             verificáveis, registradas na Solana e portáteis para qualquer
             recrutador conferir.
           </p>

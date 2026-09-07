@@ -9,7 +9,7 @@ export interface EvidencePanelProps {
 /**
  * Mostra o resultado do Verification Engine regra a regra, com ✓/✗ e o
  * `detail` em pt-BR. Mostrar por que uma regra falhou é tão importante
- * quanto mostrar que passou — é o que prova que a verificação é real.
+ * quanto mostrar que passou: é o que prova que a verificação é real.
  */
 export function EvidencePanel({ result }: EvidencePanelProps) {
   if (!result) {

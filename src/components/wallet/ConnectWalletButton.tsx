@@ -96,7 +96,7 @@ export function ConnectWalletButton({ className }: ConnectWalletButtonProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // Clipboard indisponível — falha silenciosa.
+      // Clipboard indisponível: falha silenciosa.
     }
   }
 

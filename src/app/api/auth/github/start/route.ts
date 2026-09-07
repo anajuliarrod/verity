@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/github/start — inicia o GitHub OAuth Web Application Flow
+ * GET /api/auth/github/start: inicia o GitHub OAuth Web Application Flow
  * (se configurado). Gera `state` aleatório, grava em cookie httpOnly de
  * curta duração (proteção CSRF) e redireciona para a tela de autorização
  * do GitHub. Se OAuth não estiver configurado, devolve erro no envelope

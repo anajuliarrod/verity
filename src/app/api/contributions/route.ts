@@ -1,5 +1,5 @@
 /**
- * GET /api/contributions?refresh=1 — lista as contribuições do usuário da
+ * GET /api/contributions?refresh=1: lista as contribuições do usuário da
  * sessão. Com `refresh=1`, busca no GitHub (real ou demo) e faz upsert
  * idempotente respeitando a chave composta única do schema: re-sincronizar
  * nunca duplica nem apaga um status já verificado (o upsert não toca em
@@ -13,6 +13,7 @@ import { fetchContributions } from "@/lib/github/contributions";
 import type { ContributionStatus, ContributionType } from "@/lib/types";
 import { HttpError, jsonOk, withErrorHandling } from "@/app/api/_lib/http";
 import { serializeContribution } from "@/app/api/_lib/serializers";
+import { enforceRateLimit } from "@/app/api/_lib/rateLimit";
 
 const STATUS_VALUES: readonly ContributionStatus[] = ["PENDING", "VERIFIED", "REJECTED"];
 const TYPE_VALUES: readonly ContributionType[] = [
@@ -49,6 +50,11 @@ export const GET = withErrorHandling(async (request) => {
   });
 
   if (filters.refresh && user.githubUsername) {
+    // Em modo demo `fetchContributions` não sai para a rede, mas fora do
+    // modo demo esta rota chama a API real do GitHub por trás de
+    // `refresh=1`. Limite conservador por IP para não deixar um único
+    // cliente esgotar a cota anônima compartilhada por toda a aplicação.
+    enforceRateLimit(request, "contributions-refresh", 10, 5 * 60 * 1000);
     const { contributions } = await fetchContributions(user.githubUsername);
     for (const contribution of contributions) {
       await db.contribution.upsert({

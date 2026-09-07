@@ -25,7 +25,7 @@ export function CopyButton({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // Clipboard indisponível (ex.: contexto não seguro) — falha silenciosa.
+      // Clipboard indisponível (ex.: contexto não seguro): falha silenciosa.
     }
   }
 

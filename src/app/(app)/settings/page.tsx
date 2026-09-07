@@ -144,7 +144,7 @@ export default function SettingsPage() {
         <CardContent>
           <p className="mb-4 text-sm">
             Cada integração roda em modo real ou de demonstração, dependendo das credenciais
-            configuradas no servidor — nunca quebra a experiência.
+            configuradas no servidor. Nunca quebra a experiência.
           </p>
 
           {healthLoading && (
@@ -187,7 +187,7 @@ export default function SettingsPage() {
           {!healthLoading && !healthError && health && (
             <p className="mt-4 text-xs text-verity-ink-muted">
               {health.demoMode
-                ? "O sistema está em modo demonstração — dados plausíveis e determinísticos, sem depender de credenciais externas."
+                ? "O sistema está em modo demonstração: dados plausíveis e determinísticos, sem depender de credenciais externas."
                 : "Integrações reais configuradas."}
             </p>
           )}

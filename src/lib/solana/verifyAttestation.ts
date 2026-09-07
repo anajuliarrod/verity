@@ -186,6 +186,6 @@ export async function verifyOnChain(
     matches: false,
     checkedAt: now(),
     detail:
-      "Modo demonstração (mock) — esta credencial não possui dado on-chain real para verificar.",
+      "Modo demonstração (mock): esta credencial não possui dado on-chain real para verificar.",
   };
 }

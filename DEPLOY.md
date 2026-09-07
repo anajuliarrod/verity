@@ -1,8 +1,81 @@
 # Verity: plano de deploy
 
-Este documento é um plano executável para colocar o Verity no ar como protótipo de ideathon, com um caminho de evolução claro. Ele parte do estado real do repositório em `/home/inteli/Documentos/verity`: Next.js 15 (App Router) com Route Handlers em `src/app/api/**`, Prisma com SQLite local (`prisma/schema.prisma`, `provider = "sqlite"`, `url = env("DATABASE_URL")`, comentado como "Postgres-ready"), sessão por cookie assinado com HMAC em `src/lib/session.ts`, emissão de credenciais Solana com degradação `sas` → `memo` → `mock` em `src/lib/solana/attest.ts`, e um sistema de flags de ambiente centralizado em `src/lib/env.ts` que faz o app funcionar sem nenhuma variável configurada (filosofia "zero-setup").
+Este documento nasceu como um plano executável para colocar o Verity no ar. **O deploy já aconteceu**: o app está publicado na Vercel (`https://verity-seven-xi.vercel.app`) com Postgres gerenciado pelo Neon, o `prisma/schema.prisma` já usa `provider = "postgresql"` com `DATABASE_URL`/`DIRECT_URL`, e o repositório já está no GitHub (`https://github.com/anajuliarrod/verity`, público). O texto original abaixo foi mantido como referência técnica (as explicações de *por quê* continuam corretas), mas partes que descreviam passos futuros ("trocar o provider", "inicializar o git") já foram executadas; onde isso importa, uma nota de auditoria abaixo marca o que já está feito e o que uma auditoria em `2026-09-07` encontrou quebrado em produção.
 
-O repositório hoje **não é um repositório git**. A seção 8 trata disso.
+## Status desta auditoria (2026-09-07)
+
+Testado com `curl` direto contra a URL de produção, não é suposição.
+
+Registro histórico do que foi encontrado mais cedo neste mesmo dia (mantido porque explica a causa
+raiz, mas já corrigido, ver a atualização logo abaixo):
+
+- Landing e as páginas internas (`/dashboard`, `/contributions`, `/credentials`, `/settings`,
+  `/p/emanuelly`, `/verify/<id>`) respondiam HTTP 200.
+- `GET /api/health` respondia `ok: true`, `modes.db: "connected"`, `modes.solana: "sas"`.
+- **Banco de produção sem schema aplicado.** `GET /api/profile/emanuelly` e `GET
+  /api/attestations/:id` (e por extensão qualquer rota que tocasse `User`/`Contribution`/`Attestation`)
+  respondiam `500 INTERNAL_ERROR`. Verificado diretamente contra o Postgres de produção (mesmas
+  credenciais do `.env` local, branch `production` do Neon): `SELECT table_name FROM
+  information_schema.tables WHERE table_schema = 'public'` retornava **zero linhas**. O `SELECT 1` do
+  health check passava porque não depende de nenhuma tabela existir; qualquer query real falhava.
+- Causa mais provável: o `.env` local (que replica as credenciais de produção) tinha
+  `DATABASE_URL_UNPOOLED`, não `DIRECT_URL` (nome que `prisma/schema.prisma` exige para
+  `migrate`/`db push`). Sem essa variável com o nome certo, o comando que deveria ter criado o
+  schema em produção falhava, e aparentemente ninguém notou porque `next build` não depende do banco
+  para compilar.
+- `src/lib/session.ts` foi corrigido nesta auditoria: o fallback de segredo de sessão
+  (`"verity-poc-dev-session-secret-fallback-2026"`, já identificado como risco crítico pela seção 3
+  original abaixo) agora só é usado fora de produção. Em produção, sem `VERITY_SESSION_SECRET`
+  configurada, qualquer operação de sessão (login por wallet, vínculo de GitHub, emissão de
+  attestation) falha explicitamente em vez de aceitar o segredo público conhecido.
+- Rate limiting simples (em memória, por IP) foi adicionado nas duas rotas identificadas na seção
+  6.1 abaixo (`POST /api/auth/github/link` e `GET /api/contributions?refresh=1`).
+
+### Atualização, mais tarde no mesmo dia: migration e seed aplicados em produção
+
+`npx prisma migrate deploy` rodou com sucesso contra o Postgres de produção do Neon, aplicando a
+migration `20260907142615_init`, a partir de uma máquina local com acesso direto às credenciais de
+produção (fora do sandbox que bloqueou essa escrita mais cedo neste mesmo dia). Em seguida, `npm
+run db:seed` populou o banco: seis contribuições verificadas, uma reprovada, uma attestation `sas`
+real e cinco `mock`.
+
+Confirmado com `curl` contra a URL de produção depois dessas duas execuções:
+
+- `GET /api/profile/emanuelly` responde HTTP 200 com dados reais (antes respondia `500`).
+- `GET /api/attestations/cmtrco3960006va31l2h7ak97` responde `verification.onChain: true` e
+  `verification.matches: true`.
+- `GET /verify/cmtrco3960006va31l2h7ak97` responde HTTP 200.
+
+E confirmado diretamente contra o RPC da devnet (`https://api.devnet.solana.com`), sem depender da
+aplicação nem do Explorer: a conta `6HbyFVWJs5WPZiem6YF5JLLqzt3THCTBF4hdShCKgEUR` existe, tem 338
+bytes, é `owner`ed pelo programa do Solana Attestation Service
+(`22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG`), contém em texto `verity.poc.v1` e `VERIFIED`, e a
+transação `28xqQjKmvDwQ1TULXfJUvPHGdP31Yj1bGzQeTxoZ2hhfFdTRYrJZQ2YQL31JzsuxTg7qezF2YHobV83aFAvevD2j`
+está confirmada com `err: null`, consumindo 6118 de 200000 unidades de computação. Ver "Prova
+on-chain" no README para os três links que se confirmam mutuamente (página de verificação da
+aplicação, transação no Explorer, conta do PDA no Explorer).
+
+Sobre `DIRECT_URL` na Vercel: como a migration foi aplicada rodando o comando a partir de uma
+máquina local (não como parte do build da própria Vercel), a ausência dessa variável no ambiente
+da Vercel deixou de ser um bloqueio hoje. Ela permanece uma **recomendação**, não mais uma
+pendência crítica: se algum dia a equipe quiser rodar `prisma migrate deploy` automaticamente como
+parte do pipeline de build/deploy (seção 8.1), `DIRECT_URL` com o nome exato volta a ser
+obrigatória na Vercel, pelo mesmo motivo original (seção 2.4). Enquanto migrações continuarem
+sendo aplicadas manualmente a partir de uma máquina com as credenciais corretas, não há
+urgência em configurá-la lá.
+
+Sobre o consumo de SOL: o emissor de devnet usado em produção
+(`ApnZZgybYK9fNQKuzpMuG5zxTmFnrKMtdcyD3V4AECKC`) ficou com aproximadamente 0,178 SOL de saldo depois
+deste seed (`getBalance` via RPC). Cada seed com emissão real (ou seja, rodado contra um banco sem
+attestation `sas` prévia para a primeira contribuição elegível) consome cerca de 0,0024 SOL desse
+saldo. Ver o aviso sobre `demo:reset` no README e a seção 2.5 abaixo para o mecanismo exato.
+
+**Pendência que continua aberta**: confirmar `VERITY_SESSION_SECRET` na Vercel e redeployar.
+Migration e seed não dependem dessa variável, então ela segue pendente independentemente do que foi
+resolvido acima. Como o repositório é público, o fallback conhecido no código-fonte continua sendo
+o segredo efetivamente em uso pelo deploy ativo até essa variável ser definida e um novo deploy
+publicado; até lá, sessão por wallet, vínculo de GitHub e emissão de attestation em produção
+dependem desse segredo público, em vez de falharem explicitamente como o código já prevê.
 
 ---
 
@@ -61,23 +134,20 @@ Ponto de atenção: o schema atual não usa nenhum tipo ou SQL específico de SQ
 
 ### 2.3 `prisma migrate` versus `db push`
 
-O `package.json` hoje só tem o script `db:push` (`prisma db push`). Para produção, a recomendação é trocar para `prisma migrate deploy`, porque `db push` não gera histórico de migração (não versiona o schema, força alinhamento imperativo). Passo a passo:
+**Atualização da auditoria de 2026-09-07**: o `package.json` ainda só tinha o script `db:push`, e não havia nenhuma pasta `prisma/migrations/` no repositório, o que indica que só `db push` foi usado até agora (nunca `migrate`). Essa auditoria gerou a migration baseline sem precisar de acesso a nenhum banco (`prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script`, que só lê o arquivo de schema), então ela já está commitável em `prisma/migrations/<timestamp>_init/migration.sql` + `prisma/migrations/migration_lock.toml`. Isso destrava o caminho abaixo sem precisar rodar `prisma migrate dev` contra um banco de verdade primeiro.
+
+Texto original mantido como referência do racional:
+
+O `package.json` hoje só tem o script `db:push` (`prisma db push`). Para produção, a recomendação é trocar para `prisma migrate deploy`, porque `db push` não gera histórico de migração (não versiona o schema, força alinhamento imperativo). Passo a passo, agora que a migration inicial já existe:
 
 ```bash
-# 1. Localmente, com DATABASE_URL apontando para o Postgres do Neon
-#    (pode ser um branch de desenvolvimento do Neon, separado do de produção)
-npx prisma migrate dev --name init_postgres
+# 1. Commitar a pasta prisma/migrations no git (já gerada nesta auditoria).
 
-# Isso cria prisma/migrations/<timestamp>_init_postgres/migration.sql
-# e aplica no banco de desenvolvimento apontado por DATABASE_URL.
-
-# 2. Commitar a pasta prisma/migrations no git.
-
-# 3. Em produção (CI/CD ou manualmente antes do primeiro deploy):
+# 2. Em produção (CI/CD ou manualmente, com DATABASE_URL + DIRECT_URL de produção):
 npx prisma migrate deploy
 ```
 
-`prisma migrate deploy` é idempotente e seguro para rodar em cada deploy (não pede confirmação interativa, não tenta gerar uma nova migration, só aplica as que faltam). É essa a chamada que deve entrar em um passo de build/release do pipeline, não `db push`, que continua útil apenas para iteração local rápida.
+`prisma migrate deploy` é idempotente e seguro para rodar em cada deploy (não pede confirmação interativa, não tenta gerar uma nova migration, só aplica as que faltam). É essa a chamada que deve entrar em um passo de build/release do pipeline, não `db push`, que continua útil apenas para iteração local rápida. Esse é exatamente o comando pendente para destravar a produção hoje: o banco do Neon está sem nenhuma tabela (ver "Status desta auditoria" no topo deste arquivo).
 
 ### 2.4 Connection pooling em serverless: a armadilha
 
@@ -96,15 +166,19 @@ Sem isso, o sintoma típico em produção é erro `too many connections` ou `FAT
 
 O script existente é `npm run db:seed` (`tsx prisma/seed.ts`), que faz upsert idempotente do usuário demo (`DEMO_USER`) e de contribuições determinísticas, emitindo attestations reais só para a primeira (respeitando o `VERITY_ISSUER_SECRET_KEY` configurado) e `mock` para as demais, exatamente para não gastar SOL de devnet a cada seed.
 
-Nuance importante: isso é idempotente por banco, não por reset. Se você rodar `demo:reset`, a base é recriada do zero e a primeira contribuição elegível pode gerar uma nova assinatura on-chain. Por isso, qualquer transação ou PDA citada em documentação deve ser tratada como snapshot do último seed, nunca como valor permanente.
+Nuance importante: isso é idempotente por banco, não por reset. Rodar `demo:reset` recria a base do zero (`prisma db push --force-reset`), apagando o registro de attestation existente; na sequência, `prisma/seed.ts` não encontra `existingAttestation` para a primeira contribuição elegível e chama `issueAttestation()` sem `forceMode`, o que emite uma attestation nova de verdade na Solana devnet (gastando SOL do emissor) sempre que `VERITY_ISSUER_SECRET_KEY` está configurada. Por isso, qualquer transação ou PDA citada em documentação deve ser tratada como snapshot do último seed, nunca como valor permanente.
+
+**Correção sugerida (não aplicada nesta limpeza, arquivo é de outro agente)**: em `prisma/seed.ts`, a linha `const forceMode = realAttestationIssued ? "mock" : undefined;` (dentro do laço principal) é o ponto exato que decide emitir uma attestation real. Trocar essa condição para também exigir um opt-in explícito, por exemplo `const forceMode = realAttestationIssued || !process.env.VERITY_SEED_ISSUE_REAL ? "mock" : undefined;`, faria `db:seed`/`demo:reset` cair em modo `mock` por padrão (sem gastar SOL nem gerar assinatura nova), reservando a emissão real em devnet para quando alguém definir `VERITY_SEED_ISSUE_REAL=1` de propósito, ao preparar uma nova prova on-chain para a documentação. Isso preserva o comportamento atual para quem quiser uma attestation real, mas deixa de gastar SOL do emissor a cada reset acidental.
 
 Para rodar contra o Postgres de produção:
 
 ```bash
-DATABASE_URL="<connection string do pooler do Neon>" npm run db:seed
+DATABASE_URL="<connection string do pooler do Neon>" DIRECT_URL="<conexão direta do Neon>" npm run db:seed
 ```
 
 Rodar isso uma vez manualmente após o primeiro `prisma migrate deploy`, a partir de uma máquina com acesso à `DATABASE_URL` de produção (não precisa ser dentro do pipeline de CI, dado que é uma operação pontual e idempotente, mas pode virar um job manual do GitHub Actions com `workflow_dispatch` se a equipe preferir repetibilidade controlada). Como o seed é idempotente (upsert por chave única), é seguro rodar de novo se for preciso resetar o estado da demo.
+
+**Nota da auditoria de 2026-09-07**: `prisma/seed.ts` não depende de nenhum SQL específico de dialeto (só usa o Prisma Client), então roda em Postgres sem alteração. **Atualização, mais tarde no mesmo dia**: tanto `migrate deploy` quanto `db:seed` já rodaram com sucesso contra a `DATABASE_URL`/`DIRECT_URL` de produção reais (ver "Status desta auditoria" no topo deste arquivo); o banco de produção está migrado e semeado, com uma attestation `sas` real e cinco `mock`.
 
 ---
 
@@ -115,8 +189,8 @@ Lista baseada em `src/lib/env.ts` e `.env.example`, variável por variável, com
 | Variável | Se vazia em produção | Ação recomendada |
 |---|---|---|
 | `DATABASE_URL` | Se ficar apontando para `file:./dev.db`, o Prisma não conseguirá falar com o schema Postgres em produção. Em Vercel, isso quebra o app porque o filesystem não é persistente. | **Obrigatória.** Definir com a connection string do pooler do Neon (seção 2.4). |
-| `DIRECT_URL` | Necessária para `prisma migrate deploy` e para o fluxo de migração do Neon. Sem ela, o deploy pode falhar ou tentar usar o pooler para DDL. | **Obrigatória.** Definir com a conexão direta do mesmo banco. |
-| `VERITY_SESSION_SECRET` | **Este é o item mais importante desta seção.** `src/lib/session.ts` tem um fallback hardcoded: `"verity-poc-dev-session-secret-fallback-2026"` (linha 26), usado sempre que a env var não está configurada. Esse fallback é público (está no código-fonte). Se o app for exposto publicamente sem `VERITY_SESSION_SECRET` definida, qualquer pessoa pode forjar um cookie de sessão válido para qualquer `userId` calculando o HMAC com esse mesmo segredo conhecido, e assumir a sessão de qualquer usuário (inclusive escrever attestations, trocar wallet vinculada, etc., em nome de outra conta). | **Obrigatória antes de expor publicamente.** Gerar um valor aleatório forte: `openssl rand -hex 32`. Configurar como env var secreta na Vercel. |
+| `DIRECT_URL` | Necessária para `prisma migrate deploy` e para o fluxo de migração do Neon. Sem ela na Vercel, migrações rodadas como parte do build/deploy podem falhar ou tentar usar o pooler para DDL. **Atualizado em 2026-09-07**: deixou de ser um bloqueio hoje porque a migration foi aplicada com sucesso rodando `prisma migrate deploy` a partir de uma máquina local com a conexão direta correta, fora do fluxo de build da Vercel (ver "Status desta auditoria" no topo deste arquivo). | **Recomendada**, não mais uma pendência crítica: definir na Vercel com a conexão direta do mesmo banco só volta a ser necessário se a equipe passar a rodar migrações automaticamente como parte do pipeline de build/deploy (seção 8.1). Enquanto migrações continuarem sendo aplicadas manualmente, não é urgente. |
+| `VERITY_SESSION_SECRET` | **Este é o item mais importante desta seção.** `src/lib/session.ts` tinha um fallback hardcoded (`"verity-poc-dev-session-secret-fallback-2026"`), usado sempre que a env var não estava configurada, inclusive em produção. Esse fallback é público (está no código-fonte, que é um repositório público). Um agravante confirmado nesta auditoria: o `userId` necessário para forjar o cookie de outra pessoa não precisa ser adivinhado, ele aparece em respostas públicas (`serializeContribution` inclui `userId`, exposto por `GET /api/profile/:handle` e `GET /api/attestations/:id`, ambas sem autenticação). **Corrigido nesta auditoria** (2026-09-07): `resolveSessionSecret()` em `session.ts` agora lança erro explícito quando `NODE_ENV === "production"` e a env var está vazia, em vez de cair silenciosamente no fallback conhecido. A checagem é lazy (só roda quando uma sessão é de fato assinada/validada), para não arriscar quebrar a etapa de coleta de dados de rota do `next build`. | **Obrigatória antes de expor publicamente.** Gerar um valor aleatório forte: `openssl rand -hex 32`. Configurar como env var secreta na Vercel. Com a correção de código já aplicada, se essa variável não estiver configurada em produção, o sintoma passa a ser erro 500 nas rotas de sessão (visível), não mais uma falha de segurança silenciosa. |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | Default `"devnet"` (linha 19-20 de `env.ts`). Comportamento correto e intencional para esta fase do projeto. | Manter `devnet`. Não definir como `mainnet-beta` (ver seção 5). |
 | `NEXT_PUBLIC_SOLANA_RPC` | Vazia = usa o RPC público de devnet (`https://api.devnet.solana.com`, hardcoded em `src/lib/solana/connection.ts:24`). Funciona, mas é compartilhado publicamente e sujeito a rate limit agressivo, o que pode quebrar a emissão de attestation bem na hora da demo se muita gente estiver testando o devnet ao mesmo tempo. | Recomendado configurar um RPC dedicado (Helius ou QuickNode têm free tier de devnet) para não depender do RPC público na hora da apresentação. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Vazias = `isGithubOAuthEnabled` fica `false` (`env.ts:34-36`), e o fluxo cai para vínculo manual por username em `/api/auth/github/link`. É uma degradação graciosa por design, não um erro. | Ver seção 4 para decidir se vale configurar OAuth real para a demo. |
@@ -224,7 +298,7 @@ Decisão em aberto, fora do escopo deste plano: se o projeto avançar para produ
 
 Investigação feita lendo o código (não é uma lista genérica). Para cada item do enunciado, confirmo ou refuto com base no que encontrei:
 
-### 6.1 CONFIRMADO — Ausência de rate limiting
+### 6.1 CONFIRMADO: ausência de rate limiting
 
 Não existe nenhum middleware (`find` por `middleware.ts`/`middleware.tsx` não retornou nada), nenhuma dependência de rate limiting no `package.json`, e nenhuma checagem de limite por IP/usuário em nenhuma rota de `src/app/api/**`. Rotas que disparam chamadas à API do GitHub sem qualquer limite próprio:
 
@@ -235,7 +309,9 @@ Não existe nenhum middleware (`find` por `middleware.ts`/`middleware.tsx` não 
 
 **Correção sugerida**: adicionar rate limiting simples por IP+rota antes de expor publicamente. Para o estágio do projeto, a opção de menor esforço é o Vercel Firewall (regras de rate limit no painel do projeto, sem alterar código) ou `@upstash/ratelimit` com Redis do marketplace da Vercel (grátis no tier inicial) aplicado nas rotas listadas acima e em `POST /api/attestations`.
 
-### 6.2 REFUTADO (parcialmente) — CSRF em rotas POST além do state do OAuth
+**Atualização da auditoria de 2026-09-07**: implementado um rate limit mínimo, sem dependência nova, em `src/app/api/_lib/rateLimit.ts`, aplicado às duas rotas acima (10 requisições por IP a cada 5 minutos). É em memória, por instância serverless, não distribuído: não substitui a recomendação acima (Vercel Firewall ou Upstash) para um limite garantido sob múltiplas instâncias simultâneas, mas já corta o abuso casual (um script em loop simples) sem custo nem infraestrutura nova. `POST /api/attestations` continua sem rate limit (fora do escopo desta auditoria, que focou nas rotas que chamam o GitHub; ver seção 5.5 sobre o mesmo gap em relação a gasto de rent do issuer).
+
+### 6.2 REFUTADO (parcialmente): CSRF em rotas POST além do state do OAuth
 
 O enunciado pede para investigar rotas POST além do `state` do OAuth. Encontrei: `POST /api/session/wallet`, `POST /api/auth/github/link`, `POST /api/contributions/[id]/verify`, `POST /api/attestations`. Nenhuma delas tem token CSRF explícito (nenhum double-submit cookie, nenhum header customizado exigido).
 
@@ -245,7 +321,7 @@ Porém, o cookie de sessão (`verity_session`, `src/lib/session.ts:63-69`) é gr
 
 **Correção sugerida**: não é bloqueante para o ideathon. Como melhoria futura, considerar um token CSRF de dupla submissão (cookie + header) nas rotas mutáveis, especialmente antes de qualquer mudança de `sameSite`.
 
-### 6.3 REFUTADO — "sessão por cookie sem expiração explícita"
+### 6.3 REFUTADO: "sessão por cookie sem expiração explícita"
 
 `src/lib/session.ts:63-69` grava o cookie com `maxAge: MAX_AGE_SECONDS`, onde `MAX_AGE_SECONDS = 60 * 60 * 24 * 30` (30 dias, linha 17). Ou seja, **há expiração explícita no cookie**, contrariando a hipótese do enunciado.
 
@@ -253,7 +329,7 @@ Nuance real que encontrei e que vale registrar: o token dentro do cookie (`<user
 
 **Severidade: baixa**, dado que o vetor de exfiltração do cookie (XSS) não foi identificado no código auditado (não há `dangerouslySetInnerHTML` nem injeção de HTML não sanitizado visível nas rotas revisadas), e o cookie é `httpOnly` (não acessível via `document.cookie`/JS no cliente, `session.ts:64`). Registrado como observação, não como bloqueio.
 
-### 6.4 CONFIRMADO (com nuance importante) — vulnerabilidades transitivas de `@solana/wallet-adapter-wallets`
+### 6.4 CONFIRMADO (com nuance importante): vulnerabilidades transitivas de `@solana/wallet-adapter-wallets`
 
 `npm audit --omit=dev` reporta 112 vulnerabilidades (21 low, 71 moderate, 19 high, 1 critical) na árvore de dependências de produção. A cadeia principal remonta a `@solana/wallet-adapter-wallets` (declarado em `package.json`), que traz consigo integrações com dezenas de carteiras (Keystone, Particle Network, WalletConnect/Reown, etc.), cada uma com sua própria árvore pesada, incluindo `viem`, `ws` (alta severidade: exaustão de memória e disclosure de memória não inicializada) e `protobufjs` (crítica).
 
@@ -267,13 +343,14 @@ Isso significa que, embora a dependência exista em `package.json`/`package-lock
 
 | Item | Status | Severidade | Bloqueia deploy do protótipo? |
 |---|---|---|---|
-| Rate limiting ausente nas rotas que chamam a API do GitHub | Confirmado | Alta | Recomendado corrigir antes, não estritamente bloqueante para uma demo curta e controlada |
+| Rate limiting ausente nas rotas que chamam a API do GitHub | Confirmado; mitigado nesta auditoria (rate limit em memória, ver 6.1) | Alta (era) / Baixa-moderada (com a mitigação) | Não, com a mitigação aplicada |
 | CSRF sem token dedicado além do `state` do OAuth | Confirmado, mas mitigado por `SameSite=Lax` | Baixa/moderada | Não |
 | Sessão sem expiração explícita | Refutado (há `maxAge` de 30 dias) | Baixa (nuance: token sem timestamp próprio) | Não |
 | Vulnerabilidades transitivas de `@solana/wallet-adapter-wallets` | Confirmado no `npm audit`, mas código não importa o pacote | Moderada (supply chain, não runtime) | Não |
-| `VERITY_SESSION_SECRET` sem valor em produção (achado nesta investigação, fora da lista do enunciado) | Confirmado | **Crítica** | **Sim, bloqueia** |
+| `VERITY_SESSION_SECRET` sem valor em produção | Confirmado; **corrigido no código nesta auditoria** (falha explícita em produção sem a env var, em vez de fallback silencioso) | Era crítica; agora depende só de configurar a env var na Vercel | **Sim, ainda bloqueia hoje** (sem ela, o deploy ativo depende do fallback público conhecido no código-fonte) |
+| Banco de produção sem schema aplicado (achado nesta auditoria, fora da lista original) | **Resolvido no mesmo dia**: `prisma migrate deploy` e `npm run db:seed` rodaram com sucesso contra o Postgres de produção, confirmado com `curl` e diretamente contra o RPC da devnet (seção "Status desta auditoria", no topo deste arquivo) | Era crítica | **Não, já resolvido** |
 
-O único item que realmente bloqueia um deploy público seguro é a variável `VERITY_SESSION_SECRET` (seção 3). Os demais são dívida técnica documentada, aceitável para o estágio de protótipo de ideathon, desde que a demo seja uma janela curta e controlada de exposição pública.
+Um item ainda bloqueia um deploy público plenamente seguro hoje: `VERITY_SESSION_SECRET` não confirmada na Vercel (ver "Pendência que continua aberta", no topo deste arquivo). O schema do Postgres de produção já foi aplicado e o banco já foi semeado, então esse bloqueio anterior está resolvido. Os demais itens seguem dívida técnica documentada, aceitável para o estágio de protótipo de ideathon, desde que a demo seja uma janela curta e controlada de exposição pública.
 
 ---
 
@@ -300,7 +377,7 @@ Para o mínimo viável de observabilidade sem adicionar dependências novas:
 
 ### 7.3 Como saber se a emissão de attestations está falhando
 
-A rota `GET /api/health` (`src/app/api/health/route.ts`) já expõe exatamente isso, sem precisar de nenhuma ferramenta externa: retorna `modes.solana` (via `solanaAttestationMode()`, que reflete se o app está em `sas`, `memo` ou `mock`), `modes.github`, `modes.db` (com um `SELECT 1` real contra o banco), `githubOAuth` e `demoMode`. Além disso, cada resposta de `POST /api/attestations` bem-sucedida inclui o campo `diagnostics` (montado em `src/lib/solana/attest.ts:281-323`), que registra em texto legível cada degrau tentado e o motivo de cada degradação (`"sas: falhou (...) — tentando modo memo."`, por exemplo).
+A rota `GET /api/health` (`src/app/api/health/route.ts`) já expõe exatamente isso, sem precisar de nenhuma ferramenta externa: retorna `modes.solana` (via `solanaAttestationMode()`, que reflete se o app está em `sas`, `memo` ou `mock`), `modes.github`, `modes.db` (com um `SELECT 1` real contra o banco), `githubOAuth` e `demoMode`. Além disso, cada resposta de `POST /api/attestations` bem-sucedida inclui o campo `diagnostics` (montado em `src/lib/solana/attest.ts:281-323`), que registra em texto legível cada degrau tentado e o motivo de cada degradação, por exemplo informando que o modo `sas` falhou com determinado erro e por isso a emissão seguiu para o modo `memo`.
 
 Para a demo, a checagem mais direta é:
 
@@ -316,7 +393,16 @@ Para algo mais robusto que um `curl` manual, um uptime monitor externo gratuito 
 
 ## 8. Pipeline de CI/CD mínimo
 
-O repositório hoje não é um repositório git. Passos de inicialização e primeiro push:
+**Atualização da auditoria de 2026-09-07**: o repositório já é git, já está no GitHub
+(`https://github.com/anajuliarrod/verity.git`, **público**) e já está conectado à Vercel (deploy
+automático confirmado via API do GitHub: existe um `deployment` com `creator: vercel[bot]` no
+repositório). O passo de inicialização abaixo é só histórico/referência, não precisa ser refeito.
+O que **não existe ainda** é o workflow de CI (`.github/workflows/`, seção 8.1): não há nenhum
+arquivo nessa pasta neste repositório hoje, então typecheck/lint/build só rodam quando alguém roda
+manualmente ou como parte do build da própria Vercel (que roda `next build`, mas não roda
+`typecheck`/`lint` como gate separado).
+
+Texto original (passos de inicialização, já executados):
 
 ```bash
 cd /home/inteli/Documentos/verity
@@ -380,7 +466,7 @@ jobs:
 Notas sobre este workflow, específicas deste projeto:
 
 - `DATABASE_URL="file:./dev.db"` é suficiente para o CI porque `next build` não precisa de um banco real conectado (o Prisma Client só precisa ser gerado via `prisma generate`, que lê o schema, não o banco). Não é necessário provisionar um Postgres de teste só para o build passar.
-- `npx prisma generate` é um passo necessário e hoje não está em nenhum script do `package.json`; sem ele, o `tsc --noEmit` do `typecheck` e o `next build` falham porque os tipos do `@prisma/client` não existem ainda no ambiente limpo do runner (localmente isso já roda automaticamente via um hook `postinstall` do Prisma na maioria das instalações, mas não custa deixar explícito no CI para não depender desse comportamento implícito).
+- `npx prisma generate` precisa rodar antes de `typecheck`/`build` num ambiente limpo. **Atualização de 2026-09-07**: `package.json` agora tem `"postinstall": "prisma generate"` explícito (adicionado nesta auditoria), então `npm ci`/`npm install` já garante isso sem depender do comportamento implícito do pacote `@prisma/client`. O passo explícito abaixo no workflow de CI continua uma boa prática de defesa em profundidade, mesmo com o `postinstall` em vigor.
 - Não incluí testes automatizados no workflow porque não há framework de teste configurado no `package.json` hoje (sem `jest`, `vitest`, ou script `test`). Se isso mudar, adicionar um passo `npm test` entre lint e build.
 
 ### 8.2 Deploy automático
@@ -452,20 +538,36 @@ Recomendação prática: rodar o ensaio da apresentação contra a URL de produ�
 
 ---
 
+## 11. Arquivos de tooling do Neon/Copilot na raiz (achado da auditoria de 2026-09-07)
+
+Apareceram na raiz do repositório quatro artefatos que não fazem parte do código da aplicação, gerados ao usar o GitHub Copilot com as skills do Neon para provisionar o banco e conectar a Vercel:
+
+- **`.neon`** (arquivo, não pasta): JSON com `orgId`/`projectId`/`branch` do projeto Neon vinculado. Não contém segredo (nenhuma senha ou connection string), só identificadores do projeto. Já está no `.gitignore`, não tracked. Nada a fazer.
+- **`.claude/skills/**`**: cópia local das skills do Neon para agentes (`neon`, `neon-postgres`, `neon-functions` etc., baixadas de `neondatabase/agent-skills`). Não é importado por nenhum código da aplicação. Já está no `.gitignore` (`.claude/`), não tracked. Nada a fazer.
+- **`skills-lock.json`**: lockfile de quais skills acima foram instaladas e de qual hash/versão. Mesma natureza do ponto anterior, tooling de agente, não app. Já está no `.gitignore`, não tracked. Nada a fazer.
+- **`neon.ts`**: config vazio (`export default defineConfig({})`) do pacote `@neon/config`, usado por ferramentas de CLI do Neon (ex. Neon Local Connect) para descobrir o projeto/branch a partir do repositório. Confirmado por `grep` que **nenhum arquivo em `src/`, `prisma/` ou `next.config.ts` importa `neon.ts`**; ele não faz parte do bundle da aplicação. **Atualizado na limpeza de 2026-09-07**: `neon.ts` foi adicionado ao `.gitignore` e destrackeado com `git rm --cached neon.ts` (o arquivo continua no disco, só saiu do índice do git), trazendo consistência com os outros três artefatos de tooling listados acima.
+- Nota adicional (**resolvida na limpeza de 2026-09-07**): `@neon/config` e `@neon/env` estavam em `dependencies` no `package.json`, mesmo sem serem usados pelo app em runtime (só por `neon.ts`, que também não é usado). Foram movidos para `devDependencies`.
+- **Duplicata de assets de marca (achado e resolvido na limpeza de 2026-09-07)**: a pasta `brand/` na raiz do repositório continha `verity-keyvisual.png` e `verity-mark.png`, idênticos byte a byte (MD5 conferido) aos mesmos arquivos em `public/brand/`. Só `public/brand/` é servido pela aplicação (Next.js expõe o conteúdo de `public/` na raiz da URL; todo import real no código usa o caminho `/brand/...`, que resolve para `public/brand/`). Nenhuma referência em `src/`, `public/`, `README.md` ou `DEPLOY.md` apontava para a pasta `brand/` da raiz (o único texto que menciona `brand/verity-mark.png` sem a barra inicial é um comentário de documentação em `src/components/brand/VerityMark.tsx`, citando o arquivo de origem do SVG recriado, não um import real). A pasta `brand/` da raiz foi removida do repositório (`git rm -r brand/`).
+
+---
+
 ## Referências rápidas de arquivos citados neste plano
 
-- `package.json`: scripts de build (`build`, `start`, `lint`, `typecheck`, `db:push`, `db:seed`)
-- `prisma/schema.prisma`: schema atual (SQLite, Postgres-ready)
-- `prisma/seed.ts`: seed idempotente do usuário demo
+- `package.json`: scripts de build (`build`, `start`, `lint`, `typecheck`, `postinstall`, `db:push`, `db:migrate:deploy`, `db:seed`)
+- `prisma/schema.prisma`: schema atual (Postgres/Neon, `DATABASE_URL` + `DIRECT_URL`)
+- `prisma/migrations/`: migration baseline gerada nesta auditoria (2026-09-07), ainda não aplicada em produção
+- `prisma/seed.ts`: seed idempotente do usuário demo (compatível com Postgres, testado só em ambiente local/dev nesta auditoria)
 - `src/lib/env.ts`: leitura de variáveis de ambiente e flags derivadas
-- `src/lib/session.ts`: sessão por cookie HMAC, fallback de segredo em dev
+- `src/lib/session.ts`: sessão por cookie HMAC; fallback de segredo restrito a fora de produção desde 2026-09-07
+- `src/app/api/_lib/rateLimit.ts`: rate limit simples em memória, adicionado em 2026-09-07
 - `src/lib/solana/issuer.ts`: carregamento do keypair emissor
 - `src/lib/solana/attest.ts`: degradação `sas` → `memo` → `mock`
 - `src/lib/solana/connection.ts`: RPC devnet, envio de transações
 - `src/lib/github/oauth.ts`: OAuth flow, escopo `read:user`
 - `src/app/api/auth/github/start/route.ts` e `.../callback/route.ts`: fluxo OAuth, `state` CSRF
-- `src/app/api/auth/github/link/route.ts`: vínculo manual de username
+- `src/app/api/auth/github/link/route.ts`: vínculo manual de username, agora com rate limit
 - `src/app/api/health/route.ts`: status de modos (github/solana/db)
 - `src/app/api/_lib/http.ts`: wrapper de erro padrão das rotas
 - `src/components/wallet/SolanaProvider.tsx`: confirma que `@solana/wallet-adapter-wallets` não é importado
-- `.env.example`: lista de variáveis com filosofia zero-setup
+- `.env.example`: lista de variáveis, agora incluindo `VERITY_SESSION_SECRET`
+- `neon.ts`, `.neon`, `skills-lock.json`, `.claude/`: artefatos de tooling do Neon/Copilot, não usados pela aplicação (seção 11)

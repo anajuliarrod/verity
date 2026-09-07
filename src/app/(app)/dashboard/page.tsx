@@ -91,7 +91,7 @@ export default function DashboardPage() {
         description:
           updated.status === "VERIFIED"
             ? "Todas as regras passaram."
-            : "Nem todas as regras passaram — veja os detalhes na linha.",
+            : "Nem todas as regras passaram. Veja os detalhes na linha.",
         tone: updated.status === "VERIFIED" ? "success" : "default",
       });
     } catch (cause) {

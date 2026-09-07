@@ -5,7 +5,7 @@
  * Verification Engine.
  *
  * Fallback: em modo demo, ou se a chamada real falhar (rate limit, erro de
- * rede), cai para `getDemoContributions()` e marca a origem — nunca deixa a
+ * rede), cai para `getDemoContributions()` e marca a origem. Nunca deixa a
  * tela quebrar.
  */
 
@@ -285,10 +285,10 @@ export async function fetchContributions(
     const mapped = error instanceof GithubApiError ? error : mapGithubError(error);
     const warning =
       mapped.code === "RATE_LIMITED"
-        ? "Limite de requisições do GitHub atingido — exibindo dados de demonstração."
+        ? "Limite de requisições do GitHub atingido: exibindo dados de demonstração."
         : mapped.code === "NOT_FOUND"
-          ? "Usuário do GitHub não encontrado — exibindo dados de demonstração."
-          : "Não foi possível buscar contribuições reais do GitHub — exibindo dados de demonstração.";
+          ? "Usuário do GitHub não encontrado: exibindo dados de demonstração."
+          : "Não foi possível buscar contribuições reais do GitHub: exibindo dados de demonstração.";
     return { contributions: getDemoContributions(username), origin: "demo", warning };
   }
 }

@@ -2,10 +2,17 @@
  * Sessão leve baseada em cookie httpOnly, sem lib externa de auth.
  *
  * O cookie `verity_session` guarda `<userId>.<hmac>`. O HMAC é assinado com
- * um segredo derivado de env (com fallback estável em dev, para que o app
- * funcione sem nenhuma configuração — filosofia zero-setup). Isso não é
+ * um segredo derivado de env (com fallback estável apenas em dev, para que o
+ * app funcione sem nenhuma configuração, filosofia zero-setup). Isso não é
  * criptografia de dados sensíveis: apenas garante que o cookie não pode ser
  * forjado/adulterado no cliente.
+ *
+ * Este arquivo, como todo o repositório, é público. Por isso o fallback só
+ * pode existir fora de produção: se o valor fosse usado em produção sem
+ * `VERITY_SESSION_SECRET` configurado, qualquer pessoa que leia este código
+ * poderia forjar o cookie de sessão de qualquer usuário (userId é
+ * previsível: aparece em respostas públicas como `/api/profile/:handle`).
+ * Por isso o app falha explicitamente ao iniciar em produção sem o segredo.
  */
 
 import { cookies } from "next/headers";
@@ -17,16 +24,41 @@ const COOKIE_NAME = "verity_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 dias
 
 /**
- * Fallback estável para dev/ideathon: não é secreto, mas evita que o app
- * quebre quando `VERITY_SESSION_SECRET` não está configurado. Em produção,
- * configure a env var para um valor real.
+ * Fallback estável, usado só fora de produção (dev/ideathon local), para que
+ * o app funcione sem nenhuma configuração. Nunca usado quando
+ * `NODE_ENV === "production"`: nesse caso a ausência de
+ * `VERITY_SESSION_SECRET` é um erro fatal, não uma degradação silenciosa,
+ * porque o repositório é público e o fallback é conhecido por qualquer um.
  */
-const SESSION_SECRET =
-  process.env.VERITY_SESSION_SECRET?.trim() ||
-  "verity-poc-dev-session-secret-fallback-2026";
+const DEV_FALLBACK_SECRET = "verity-poc-dev-session-secret-fallback-2026";
+
+/**
+ * Resolvida sob demanda (não no carregamento do módulo) para não arriscar
+ * quebrar a fase de build do Next.js (`next build` roda com
+ * `NODE_ENV=production` e importa rotas para coletar metadados, sem
+ * necessariamente ter as env vars de runtime disponíveis). O erro deve
+ * acontecer quando uma sessão é de fato assinada/validada em produção, não
+ * ao empacotar o código.
+ */
+function resolveSessionSecret(): string {
+  const configured = process.env.VERITY_SESSION_SECRET?.trim();
+  if (configured) return configured;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "VERITY_SESSION_SECRET não está configurado em produção. Como este " +
+        "repositório é público, o fallback de desenvolvimento é conhecido " +
+        "por qualquer pessoa e permitiria forjar sessão de qualquer " +
+        "usuário. Configure a env var na Vercel antes de servir tráfego " +
+        "(gere um valor com `openssl rand -hex 32`).",
+    );
+  }
+
+  return DEV_FALLBACK_SECRET;
+}
 
 function sign(userId: string): string {
-  return createHmac("sha256", SESSION_SECRET).update(userId).digest("hex");
+  return createHmac("sha256", resolveSessionSecret()).update(userId).digest("hex");
 }
 
 function encodeToken(userId: string): string {

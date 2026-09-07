@@ -1,8 +1,8 @@
 /**
  * Leitura tipada das variáveis de ambiente (seção 8 do VERITY_BRIEF.md) e
  * flags derivadas de modo demo. Nenhuma variável é obrigatória além de
- * `DATABASE_URL` — filosofia zero-setup: tudo que falta vira degradação
- * graciosa, nunca erro fatal.
+ * `DATABASE_URL` (filosofia zero-setup: tudo que falta vira degradação
+ * graciosa, nunca erro fatal).
  */
 
 type SolanaCluster = "devnet" | "testnet" | "mainnet-beta";
