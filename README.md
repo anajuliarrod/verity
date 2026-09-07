@@ -10,6 +10,10 @@ depender da palavra de quem afirma tê-las feito. Cada credencial carrega o hash
 originou e, quando emitida on-chain, pode ser reconferida diretamente na rede, sem confiar no banco
 de dados da aplicação.
 
+> **Acesso rápido:** o [one-pager interativo](https://claude.ai/code/artifact/16375732-fd9a-4a59-b677-49c5068015d0)
+> resume o projeto e permite conferir de forma independente as provas on-chain citadas aqui; o
+> [protótipo em produção](https://verity-seven-xi.vercel.app) é a aplicação publicada, funcionando.
+
 ---
 
 ## Demonstração local
