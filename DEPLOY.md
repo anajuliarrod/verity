@@ -36,7 +36,7 @@ Neon é a recomendação porque tem free tier funcional (sem cartão de crédito
 
 ### 2.2 Trocar o provider no schema
 
-Arquivo: `prisma/schema.prisma`. Hoje:
+Arquivo: `prisma/schema.prisma`. O repositório já usa este formato:
 
 ```prisma
 datasource db {
@@ -55,7 +55,7 @@ datasource db {
 }
 ```
 
-Isso é uma alteração real em `prisma/schema.prisma`, que está fora do escopo deste documento aplicar (ele é só o plano). Quem for executar o deploy precisa fazer essa troca antes do primeiro `db push`/`migrate` contra o Postgres.
+Isso já está aplicado no repositório atual. O próximo passo é apontar `DATABASE_URL` e `DIRECT_URL` para o banco do Neon e gerar a primeira migration.
 
 Ponto de atenção: o schema atual não usa nenhum tipo ou SQL específico de SQLite, exatamente como o comentário do arquivo já registra ("Sem SQL cru dependente de dialeto"). Os campos `String` livres usados para `evidence`, `raw` e `payload` (JSON serializado como texto) funcionam sem alteração em Postgres. Não há necessidade de migrar esses campos para o tipo `Json` nativo do Postgres agora; é uma melhoria futura, não um bloqueio.
 
@@ -114,8 +114,8 @@ Lista baseada em `src/lib/env.ts` e `.env.example`, variável por variável, com
 
 | Variável | Se vazia em produção | Ação recomendada |
 |---|---|---|
-| `DATABASE_URL` | Cai no default `file:./dev.db` (`src/lib/env.ts:17`). Em ambiente serverless da Vercel isso é catastrófico: o filesystem não é persistente entre invocações, então cada requisição veria um banco SQLite vazio/diferente. | **Obrigatória.** Definir com a connection string do pooler do Neon (seção 2.4). |
-| `DIRECT_URL` | Não existe hoje no `env.ts` porque o schema ainda é SQLite; passa a ser necessária assim que o `datasource` ganhar `directUrl` (seção 2.2). Sem ela, `prisma migrate deploy` falha ou tenta usar o pooler para DDL, o que pode falhar de forma intermitente. | **Obrigatória** após a migração para Postgres. |
+| `DATABASE_URL` | Se ficar apontando para `file:./dev.db`, o Prisma não conseguirá falar com o schema Postgres em produção. Em Vercel, isso quebra o app porque o filesystem não é persistente. | **Obrigatória.** Definir com a connection string do pooler do Neon (seção 2.4). |
+| `DIRECT_URL` | Necessária para `prisma migrate deploy` e para o fluxo de migração do Neon. Sem ela, o deploy pode falhar ou tentar usar o pooler para DDL. | **Obrigatória.** Definir com a conexão direta do mesmo banco. |
 | `VERITY_SESSION_SECRET` | **Este é o item mais importante desta seção.** `src/lib/session.ts` tem um fallback hardcoded: `"verity-poc-dev-session-secret-fallback-2026"` (linha 26), usado sempre que a env var não está configurada. Esse fallback é público (está no código-fonte). Se o app for exposto publicamente sem `VERITY_SESSION_SECRET` definida, qualquer pessoa pode forjar um cookie de sessão válido para qualquer `userId` calculando o HMAC com esse mesmo segredo conhecido, e assumir a sessão de qualquer usuário (inclusive escrever attestations, trocar wallet vinculada, etc., em nome de outra conta). | **Obrigatória antes de expor publicamente.** Gerar um valor aleatório forte: `openssl rand -hex 32`. Configurar como env var secreta na Vercel. |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | Default `"devnet"` (linha 19-20 de `env.ts`). Comportamento correto e intencional para esta fase do projeto. | Manter `devnet`. Não definir como `mainnet-beta` (ver seção 5). |
 | `NEXT_PUBLIC_SOLANA_RPC` | Vazia = usa o RPC público de devnet (`https://api.devnet.solana.com`, hardcoded em `src/lib/solana/connection.ts:24`). Funciona, mas é compartilhado publicamente e sujeito a rate limit agressivo, o que pode quebrar a emissão de attestation bem na hora da demo se muita gente estiver testando o devnet ao mesmo tempo. | Recomendado configurar um RPC dedicado (Helius ou QuickNode têm free tier de devnet) para não depender do RPC público na hora da apresentação. |

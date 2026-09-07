@@ -1,5 +1,5 @@
 // Verity — Prisma schema
-// SQLite por padrão (zero-setup). Postgres-ready: trocar `provider` e `DATABASE_URL`.
+// Postgres para deploy em Vercel/Neon. Use `DATABASE_URL` + `DIRECT_URL`.
 // Sem SQL cru dependente de dialeto.
 
 generator client {
@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {

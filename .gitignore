@@ -44,3 +44,6 @@ next-env.d.ts
 # prisma / sqlite
 prisma/dev.db*
 dev.db*
+.neon
+.claude/
+skills-lock.json

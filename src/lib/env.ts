@@ -14,7 +14,7 @@ function readString(value: string | undefined): string | undefined {
 }
 
 export const env = {
-  databaseUrl: process.env.DATABASE_URL ?? "file:./dev.db",
+  databaseUrl: readString(process.env.DATABASE_URL),
 
   solanaCluster: (readString(process.env.NEXT_PUBLIC_SOLANA_CLUSTER) ??
     "devnet") as SolanaCluster,
