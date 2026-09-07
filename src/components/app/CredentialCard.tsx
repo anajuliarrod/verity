@@ -70,7 +70,7 @@ export function CredentialCard({ attestation, className, footer }: CredentialCar
             Proof of Contribution
           </p>
           <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/60">
-            Verified on Solana
+            Verificado na Solana
           </p>
         </div>
 

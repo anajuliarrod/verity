@@ -26,7 +26,13 @@ async function firstAvailableHandle(base: string): Promise<string> {
   const safeBase = base || "user";
   let candidate = safeBase;
   let attempt = 1;
-  while (await db.user.findUnique({ where: { handle: candidate } })) {
+  // `select` explícito: evita depender de colunas aditivas recém-adicionadas
+  // ao schema (ex.: `previousHandle`) que podem ainda não existir no banco
+  // no momento do deploy, já que o Prisma seleciona todas as colunas do
+  // model por padrão quando nenhum `select` é informado.
+  while (
+    await db.user.findUnique({ where: { handle: candidate }, select: { id: true } })
+  ) {
     attempt += 1;
     candidate = `${safeBase}-${attempt}`;
   }

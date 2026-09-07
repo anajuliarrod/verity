@@ -19,8 +19,14 @@ model User {
   githubId       String?  @unique
   name           String?
   headline       String?
+  bio            String?
+  course         String?
+  institution    String?
+  location       String?
+  websiteUrl     String?
   avatarUrl      String?
   handle         String   @unique
+  previousHandle String?  @unique
   createdAt      DateTime @default(now())
   contributions  Contribution[]
 }

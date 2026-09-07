@@ -1,21 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { ContributionRow } from "@/components/app/ContributionRow";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StepFlowCompact } from "@/components/app/StepFlow";
+import { useVerityProgress } from "@/components/app/useVerityProgress";
+import { useWalletAddress } from "@/components/app/useWalletAddress";
 import { IconGitBranch, IconRefresh } from "@/components/app/icons";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pill } from "@/components/ui/Pill";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { ConnectWalletButton } from "@/components/wallet";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
   ApiError,
   filterContributions,
   getContributions,
   issueAttestation,
+  linkWallet,
   verifyContribution,
 } from "@/lib/api-client";
-import type { ContributionStatus, VerityContribution } from "@/lib/types";
+import type { ContributionStatus, StepId, VerityContribution, VerityUser } from "@/lib/types";
 
 type StatusFilter = "all" | ContributionStatus;
 
@@ -27,7 +36,15 @@ const STATUS_PILLS: { value: StatusFilter; label: string }[] = [
 ];
 
 export default function ContributionsPage() {
+  useDocumentTitle("Contribuições");
+
+  const router = useRouter();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const { toast } = useToast();
+  const { address, connected } = useWalletAddress();
+
+  const [user, setUser] = useState<VerityUser | null>(null);
+  const linkedAddressRef = useRef<string | null>(null);
 
   const [contributions, setContributions] = useState<VerityContribution[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +56,18 @@ export default function ContributionsPage() {
 
   const [verifyingIds, setVerifyingIds] = useState<Set<string>>(new Set());
   const [issuingIds, setIssuingIds] = useState<Set<string>>(new Set());
+
+  // Usado só para calcular o passo atual do StepFlowCompact: best-effort,
+  // nunca bloqueia a listagem de contribuições se falhar.
+  useEffect(() => {
+    if (!address || linkedAddressRef.current === address) return;
+    linkedAddressRef.current = address;
+    linkWallet(address)
+      .then(setUser)
+      .catch(() => {
+        // Sem impacto na tela: a wallet já está conectada de qualquer forma.
+      });
+  }, [address]);
 
   function load(refresh: boolean) {
     const setBusy = refresh ? setSyncing : setLoading;
@@ -57,8 +86,9 @@ export default function ContributionsPage() {
   }
 
   useEffect(() => {
+    if (!connected) return;
     load(false);
-  }, []);
+  }, [connected]);
 
   async function handleVerify(id: string) {
     setVerifyingIds((current) => new Set(current).add(id));
@@ -126,20 +156,60 @@ export default function ContributionsPage() {
     });
   }, [contributions, statusFilter, search]);
 
+  const progress = useVerityProgress({ connected, user, contributions });
+
+  function handleStepAction(id: StepId) {
+    switch (id) {
+      case "connect_wallet":
+        setWalletModalVisible(true);
+        return;
+      case "connect_github":
+        router.push("/dashboard");
+        return;
+      case "find_contributions":
+      case "verify_contribution":
+      case "issue_attestation":
+        router.push("/contributions");
+        return;
+    }
+  }
+
+  const currentStep = progress.current;
+  const compactStep = currentStep
+    ? { ...currentStep, onAction: () => handleStepAction(currentStep.id) }
+    : null;
+
+  if (!connected) {
+    return (
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+        <PageHeader
+          title="Contribuições"
+          description="Verifique suas contribuições e emita credenciais para as aprovadas."
+        />
+        <EmptyState
+          icon={<IconGitBranch />}
+          title="Conecte sua wallet para ver suas contribuições"
+          description="Sua wallet Solana é a identidade que recebe as credenciais de contribuição. Conecte para continuar de onde parou."
+          action={<ConnectWalletButton />}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-verity-ink">Contribuições</h1>
-          <p className="mt-1 text-sm text-verity-ink-muted">
-            Verifique suas contribuições e emita credenciais para as aprovadas.
-          </p>
-        </div>
-        <Button variant="secondary" loading={syncing} onClick={() => load(true)}>
-          <IconRefresh className="h-4 w-4" />
-          Sincronizar com GitHub
-        </Button>
-      </div>
+      <PageHeader
+        title="Contribuições"
+        description="Verifique suas contribuições e emita credenciais para as aprovadas."
+        action={
+          <Button variant="secondary" loading={syncing} onClick={() => load(true)}>
+            <IconRefresh className="h-4 w-4" />
+            Sincronizar com GitHub
+          </Button>
+        }
+      />
+
+      {compactStep && <StepFlowCompact step={compactStep} />}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por status">

@@ -3,6 +3,15 @@
  * (modo sem OAuth). Tenta enriquecer com dados públicos do GitHub (nome,
  * avatar, id), mas nunca bloqueia o vínculo se essa chamada falhar.
  * Zero-setup: a régua de verificação continua funcionando com o username.
+ *
+ * DELETE /api/auth/github/link: desvincula o GitHub da sessão atual.
+ * Decisão de produto: as contribuições e credenciais já importadas
+ * permanecem intactas (`Contribution`/`Attestation` referenciam `userId`,
+ * não o username do GitHub, e uma attestation já emitida é prova on-chain
+ * que continua válida independentemente do vínculo atual). Desvincular só
+ * impede novas sincronizações (`GET /api/contributions?refresh=1` só busca
+ * no GitHub quando `user.githubUsername` está preenchido) até que um
+ * GitHub seja vinculado de novo.
  */
 
 import { z } from "zod";
@@ -43,7 +52,10 @@ export const POST = withErrorHandling(async (request) => {
 
   const { username } = bodySchema.parse(await readJsonBody(request));
 
-  const existing = await db.user.findUnique({ where: { githubUsername: username } });
+  const existing = await db.user.findUnique({
+    where: { githubUsername: username },
+    select: { id: true },
+  });
   if (existing && existing.id !== user.id) {
     throw new HttpError(
       "CONFLICT",
@@ -73,11 +85,22 @@ export const POST = withErrorHandling(async (request) => {
   const nextHandle = isWalletDerivedHandle(user.handle)
     ? await generateGithubHandle(username)
     : user.handle;
+  const handleChanged = nextHandle !== user.handle;
 
   try {
     const updated = await db.user.update({
       where: { id: user.id },
-      data: { githubUsername: username, githubId, name, avatarUrl, handle: nextHandle },
+      data: {
+        githubUsername: username,
+        githubId,
+        name,
+        avatarUrl,
+        handle: nextHandle,
+        // Guarda o handle antigo para que um link de perfil já compartilhado
+        // (com o handle derivado da wallet) continue resolvendo: ver
+        // `getPublicProfile` em `src/lib/server/profile.ts`.
+        ...(handleChanged ? { previousHandle: user.handle } : {}),
+      },
     });
     return jsonOk(serializeUser(updated));
   } catch (error) {
@@ -89,6 +112,23 @@ export const POST = withErrorHandling(async (request) => {
     }
     throw error;
   }
+});
+
+export const DELETE = withErrorHandling(async () => {
+  const user = await requireUser();
+  if (!user) {
+    throw new HttpError("UNAUTHORIZED", "É necessário estar em uma sessão ativa.");
+  }
+  if (!user.githubUsername) {
+    throw new HttpError("VALIDATION_ERROR", "Nenhuma conta do GitHub vinculada a esta conta.");
+  }
+
+  const updated = await db.user.update({
+    where: { id: user.id },
+    data: { githubUsername: null, githubId: null },
+  });
+
+  return jsonOk(serializeUser(updated));
 });
 
 interface PrismaKnownError {

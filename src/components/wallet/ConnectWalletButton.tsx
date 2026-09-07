@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Button } from "@/components/ui";
@@ -151,8 +152,20 @@ export function ConnectWalletButton({ className }: ConnectWalletButtonProps) {
             }}
             className="flex w-full items-center px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
           >
-            Desconectar
+            Desconectar carteira deste navegador
           </button>
+          <p className="border-t border-verity-border px-3 py-2 text-xs text-verity-ink-muted">
+            Isso não encerra sua conta. Para desvincular sua wallet do VERITY,
+            acesse{" "}
+            <Link
+              href="/settings"
+              onClick={() => setMenuOpen(false)}
+              className="focus-ring rounded-input font-medium text-verity-ink underline"
+            >
+              Configurações
+            </Link>
+            .
+          </p>
         </div>
       )}
     </div>

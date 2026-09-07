@@ -81,6 +81,17 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        <div className="md:hidden">
+          <div className="my-2 border-t border-verity-border" />
+          <Link
+            href="/"
+            onClick={onClose}
+            className="focus-ring flex items-center gap-3 rounded-input px-3 py-2.5 text-sm font-medium text-verity-ink-muted hover:bg-verity-bg hover:text-verity-ink"
+          >
+            Sobre a VERITY
+          </Link>
+        </div>
       </aside>
     </>
   );

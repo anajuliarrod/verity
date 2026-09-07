@@ -106,14 +106,21 @@ export function ContributionRow({
           )}
 
           {contribution.status === "VERIFIED" && !contribution.attestation && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={issuing}
-              onClick={() => onIssueAttestation(contribution.id)}
-            >
-              Emitir credencial
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                loading={issuing}
+                onClick={() => onIssueAttestation(contribution.id)}
+              >
+                Emitir credencial
+              </Button>
+              {issuing && (
+                <span role="status" className="text-xs text-verity-ink-muted">
+                  Emitindo na Solana, pode levar alguns segundos...
+                </span>
+              )}
+            </div>
           )}
 
           {contribution.attestation && (

@@ -65,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((item) => (
           <div
             key={item.id}
-            role="status"
+            role={item.tone === "error" ? "alert" : "status"}
             className={cn(
               "pointer-events-auto rounded-card border px-4 py-3 shadow-brand",
               TONE_CLASSES[item.tone ?? "default"],

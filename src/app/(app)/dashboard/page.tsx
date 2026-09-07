@@ -1,19 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ContributionRow } from "@/components/app/ContributionRow";
 import { GithubLinkCard } from "@/components/app/GithubLinkCard";
+import { PageHeader } from "@/components/app/PageHeader";
 import { StepFlow, type StepFlowStep } from "@/components/app/StepFlow";
 import { useHealth } from "@/components/app/useHealth";
+import { useVerityProgress } from "@/components/app/useVerityProgress";
 import { useWalletAddress } from "@/components/app/useWalletAddress";
 import { IconGitBranch, IconShieldCheck, IconUser } from "@/components/app/icons";
 import { ConnectWalletButton, WalletBadge } from "@/components/wallet";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import {
   ApiError,
   getContributions,
@@ -23,15 +29,16 @@ import {
 } from "@/lib/api-client";
 import type { StepId, VerityContribution, VerityUser } from "@/lib/types";
 
-const STEP_ORDER: StepId[] = [
-  "connect_wallet",
-  "connect_github",
-  "find_contributions",
-  "verify_contribution",
-  "issue_attestation",
-];
+function publicProfileUrl(handle: string): string {
+  if (typeof window === "undefined") return `/p/${handle}`;
+  return `${window.location.origin}/p/${handle}`;
+}
 
 export default function DashboardPage() {
+  useDocumentTitle("Perfil");
+
+  const router = useRouter();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const { address, connected } = useWalletAddress();
   const { health } = useHealth();
   const { toast } = useToast();
@@ -139,24 +146,33 @@ export default function DashboardPage() {
     }
   }
 
-  const steps: StepFlowStep[] = useMemo(() => {
-    const done: Record<StepId, boolean> = {
-      connect_wallet: connected,
-      connect_github: Boolean(user?.githubUsername),
-      find_contributions: Boolean(contributions && contributions.length > 0),
-      verify_contribution: Boolean(contributions?.some((c) => c.status === "VERIFIED")),
-      issue_attestation: Boolean(contributions?.some((c) => c.attestation)),
-    };
-    let currentAssigned = false;
-    return STEP_ORDER.map((id) => {
-      if (done[id]) return { id, status: "done" as const };
-      if (!currentAssigned) {
-        currentAssigned = true;
-        return { id, status: "current" as const };
+  const progress = useVerityProgress({ connected, user, contributions });
+
+  function handleStepAction(id: StepId) {
+    switch (id) {
+      case "connect_wallet":
+        setWalletModalVisible(true);
+        return;
+      case "connect_github": {
+        const section = document.getElementById("github-link-section");
+        section?.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.setTimeout(() => {
+          document.getElementById("github-username")?.focus();
+        }, 400);
+        return;
       }
-      return { id, status: "todo" as const };
-    });
-  }, [connected, user, contributions]);
+      case "find_contributions":
+      case "verify_contribution":
+      case "issue_attestation":
+        router.push("/contributions");
+        return;
+    }
+  }
+
+  const stepFlowSteps: StepFlowStep[] = progress.steps.map((step) => ({
+    ...step,
+    onAction: () => handleStepAction(step.id),
+  }));
 
   const stats = {
     found: contributions?.length ?? 0,
@@ -168,15 +184,13 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-verity-ink">Perfil</h1>
-        <p className="mt-1 text-sm text-verity-ink-muted">
-          Acompanhe seu progresso, do vínculo da wallet à credencial na Solana.
-        </p>
-      </div>
+      <PageHeader
+        title="Perfil"
+        description="Acompanhe seu progresso, do vínculo da wallet à credencial na Solana."
+      />
 
       <Card>
-        <StepFlow steps={steps} />
+        <StepFlow steps={stepFlowSteps} />
       </Card>
 
       {!connected && (
@@ -215,10 +229,37 @@ export default function DashboardPage() {
                 {userError}
               </p>
             )}
+
+            {user && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-verity-border pt-4 text-sm">
+                <Link
+                  href="/settings"
+                  className="focus-ring rounded-input font-medium text-verity-primary hover:underline"
+                >
+                  Gerenciar wallet e GitHub em Configurações
+                </Link>
+                <span aria-hidden="true" className="text-verity-border">
+                  ·
+                </span>
+                <CopyButton
+                  value={publicProfileUrl(user.handle)}
+                  label="Copiar link do perfil"
+                  copiedLabel="Link copiado"
+                />
+                <Link
+                  href={`/p/${user.handle}`}
+                  className="focus-ring inline-flex items-center gap-1.5 rounded-input border border-verity-border bg-white px-2.5 py-1 text-xs font-medium text-verity-ink-muted transition-colors hover:bg-verity-bg"
+                >
+                  Ver perfil público
+                </Link>
+              </div>
+            )}
           </Card>
 
           {!userLoading && user && !user.githubUsername && (
-            <GithubLinkCard oauthAvailable={oauthAvailable} onLinked={setUser} />
+            <div id="github-link-section">
+              <GithubLinkCard oauthAvailable={oauthAvailable} onLinked={setUser} />
+            </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-3">

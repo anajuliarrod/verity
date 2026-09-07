@@ -35,6 +35,16 @@ export interface VerityUser {
   githubId: string | null;
   name: string | null;
   headline: string | null;
+  /** Até 280 caracteres. */
+  bio: string | null;
+  /** Curso da pessoa, ex.: "Engenharia de Software". Até 120 caracteres. */
+  course: string | null;
+  /** Instituição de ensino. Até 120 caracteres. */
+  institution: string | null;
+  /** Até 120 caracteres. */
+  location: string | null;
+  /** URL http:// ou https://. Até 200 caracteres. */
+  websiteUrl: string | null;
   avatarUrl: string | null;
   handle: string;
   createdAt: string;
@@ -156,6 +166,11 @@ export interface PublicProfile {
   handle: string;
   name: string | null;
   headline: string | null;
+  bio: string | null;
+  course: string | null;
+  institution: string | null;
+  location: string | null;
+  websiteUrl: string | null;
   avatarUrl: string | null;
   wallet: string | null;
   githubUsername: string | null;

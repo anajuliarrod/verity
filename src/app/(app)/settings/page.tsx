@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AccountConnections } from "@/components/app/AccountConnections";
 import { GithubLinkCard } from "@/components/app/GithubLinkCard";
 import { IconGithub, IconSettings, IconWallet } from "@/components/app/icons";
+import { PageHeader } from "@/components/app/PageHeader";
+import { ProfileForm } from "@/components/app/ProfileForm";
 import { useHealth } from "@/components/app/useHealth";
 import { useWalletAddress } from "@/components/app/useWalletAddress";
-import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ConnectWalletButton, WalletBadge } from "@/components/wallet";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { ApiError, linkWallet } from "@/lib/api-client";
 import type { AttestationMode, HealthStatus, VerityUser } from "@/lib/types";
 
@@ -32,6 +34,8 @@ const SOLANA_MODE_LABEL: Record<AttestationMode, string> = {
 };
 
 export default function SettingsPage() {
+  useDocumentTitle("Configurações");
+
   const { address, connected } = useWalletAddress();
   const { health, loading: healthLoading, error: healthError } = useHealth();
 
@@ -59,80 +63,82 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-verity-ink">Configurações</h1>
-        <p className="mt-1 text-sm text-verity-ink-muted">
-          Wallet, GitHub, perfil público e diagnóstico das integrações.
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        description="Perfil, wallet, GitHub e diagnóstico das integrações."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Wallet</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {connected ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <WalletBadge />
-              <ConnectWalletButton />
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm">Nenhuma wallet conectada.</p>
-              <ConnectWalletButton />
-            </div>
-          )}
-          {userError && (
-            <p role="alert" className="mt-3 text-sm text-red-600">
-              {userError}
+      {!connected && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Wallet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-verity-ink-muted">
+              Nenhuma wallet conectada. Use o botão &quot;Conectar wallet&quot; no topo da página
+              para continuar.
             </p>
-          )}
-        </CardContent>
-      </Card>
+            {userError && (
+              <p role="alert" className="mt-3 text-sm text-red-600">
+                {userError}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {connected && (
         <>
           {userLoading && <Skeleton className="h-40 w-full" />}
 
-          {!userLoading && user && !user.githubUsername && (
-            <GithubLinkCard oauthAvailable={oauthAvailable} onLinked={setUser} />
-          )}
-
-          {!userLoading && user && user.githubUsername && (
+          {!userLoading && userError && (
             <Card>
-              <CardHeader>
-                <CardTitle>GitHub</CardTitle>
-              </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2 text-sm text-verity-ink">
-                  <IconGithub className="h-4 w-4 text-verity-ink-muted" />
-                  <span className="font-medium">@{user.githubUsername}</span>
-                  <Badge tone="verified">Vinculado</Badge>
-                </div>
+                <p role="alert" className="text-sm text-red-600">
+                  {userError}
+                </p>
               </CardContent>
             </Card>
           )}
 
           {!userLoading && user && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Perfil público</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">
-                  Qualquer pessoa pode conferir suas credenciais verificadas neste link:
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/p/${user.handle}`}
-                    className="focus-ring truncate rounded-input border border-verity-border bg-verity-bg px-3 py-2 text-sm text-verity-ink hover:text-verity-primary"
-                  >
-                    {publicProfileUrl(user.handle)}
-                  </Link>
-                  <CopyButton value={publicProfileUrl(user.handle)} />
-                </div>
-              </CardContent>
-            </Card>
+            <>
+              <AccountConnections user={user} onUpdated={setUser} />
+
+              {!user.githubUsername && (
+                <GithubLinkCard oauthAvailable={oauthAvailable} onLinked={setUser} />
+              )}
+
+              <ProfileForm user={user} onUpdated={setUser} />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Perfil público</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {user.githubUsername ? (
+                    <>
+                      <p className="text-sm">
+                        Qualquer pessoa pode conferir suas credenciais verificadas neste link:
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/p/${user.handle}`}
+                          className="focus-ring truncate rounded-input border border-verity-border bg-verity-bg px-3 py-2 text-sm text-verity-ink hover:text-verity-primary"
+                        >
+                          {publicProfileUrl(user.handle)}
+                        </Link>
+                        <CopyButton value={publicProfileUrl(user.handle)} />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-verity-ink-muted">
+                      Seu perfil público fica disponível assim que você vincula um GitHub.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
         </>
       )}

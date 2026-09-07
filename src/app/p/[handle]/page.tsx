@@ -1,10 +1,12 @@
 import type { ComponentType, ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PublicShell } from "@/components/app/PublicShell";
 import {
   IconChevronRight,
   IconCommit,
+  IconExternalLink,
   IconGithub,
   IconIssue,
   IconPullRequest,
@@ -20,7 +22,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { getPublicProfile } from "@/lib/server/profile";
 import type { ContributionType, PublicProfile } from "@/lib/types";
-import { formatDate, truncateAddress } from "@/lib/utils";
+import { cn, formatDate, truncateAddress } from "@/lib/utils";
+
+const SOLANA_EXPLORER_CLUSTER = "devnet";
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -118,6 +122,15 @@ export default async function PublicProfilePage({ params }: PageProps) {
   }
 
   const { profile } = result;
+
+  // O handle público pode ter mudado (ex.: ao vincular o GitHub depois da
+  // wallet). `getPublicProfile` também busca por `previousHandle`, então um
+  // handle antigo já compartilhado chega aqui com `profile.handle` diferente
+  // do segmento pedido: redireciona para o handle atual em vez de quebrar o link.
+  if (profile.handle !== handle) {
+    redirect(`/p/${profile.handle}`);
+  }
+
   const firstAttestationId = profile.verifiedContributions.find(
     (contribution) => contribution.attestation,
   )?.attestation?.id;
@@ -135,12 +148,22 @@ export default async function PublicProfilePage({ params }: PageProps) {
               {profile.headline && (
                 <p className="text-sm text-verity-ink-muted">{profile.headline}</p>
               )}
+              {(profile.course || profile.institution) && (
+                <p className="mt-0.5 text-sm text-verity-ink-muted">
+                  {[profile.course, profile.institution].filter(Boolean).join(" · ")}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-verity-ink-muted">
                 {profile.wallet && (
-                  <span className="inline-flex items-center gap-1.5">
+                  <a
+                    href={`https://explorer.solana.com/address/${profile.wallet}?cluster=${SOLANA_EXPLORER_CLUSTER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="focus-ring inline-flex items-center gap-1.5 rounded-input hover:text-verity-primary"
+                  >
                     <IconWallet className="h-3.5 w-3.5" />
                     {truncateAddress(profile.wallet)}
-                  </span>
+                  </a>
                 )}
                 {profile.githubUsername && (
                   <a
@@ -161,6 +184,33 @@ export default async function PublicProfilePage({ params }: PageProps) {
             <StatBlock label="Verificadas" value={profile.stats.verifiedCount} />
             <StatBlock label="Projetos" value={profile.stats.projectsCount} />
           </div>
+
+          {(profile.bio || profile.location || profile.websiteUrl) && (
+            <div className="mt-5 border-t border-verity-border pt-5">
+              {profile.bio && <p className="text-sm text-verity-ink">{profile.bio}</p>}
+              {(profile.location || profile.websiteUrl) && (
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center gap-3 text-xs text-verity-ink-muted",
+                    profile.bio && "mt-2",
+                  )}
+                >
+                  {profile.location && <span>{profile.location}</span>}
+                  {profile.websiteUrl && (
+                    <a
+                      href={profile.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="focus-ring inline-flex items-center gap-1.5 rounded-input hover:text-verity-primary"
+                    >
+                      <IconExternalLink className="h-3.5 w-3.5" />
+                      {profile.websiteUrl.replace(/^https?:\/\//, "")}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -201,7 +251,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                           {TYPE_LABEL[contribution.type]} · {formatDate(contribution.occurredAt)}
                         </p>
                       </div>
-                      <VerifiedBadge className="hidden sm:inline-flex" />
+                      <VerifiedBadge label="Verificada" className="hidden sm:inline-flex" />
                       <IconChevronRight className="h-4 w-4 shrink-0 text-verity-ink-muted" />
                     </Link>
                   </li>
