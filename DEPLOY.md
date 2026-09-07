@@ -555,8 +555,8 @@ Apareceram na raiz do repositório quatro artefatos que não fazem parte do cód
 
 - `package.json`: scripts de build (`build`, `start`, `lint`, `typecheck`, `postinstall`, `db:push`, `db:migrate:deploy`, `db:seed`)
 - `prisma/schema.prisma`: schema atual (Postgres/Neon, `DATABASE_URL` + `DIRECT_URL`)
-- `prisma/migrations/`: migration baseline gerada nesta auditoria (2026-09-07), ainda não aplicada em produção
-- `prisma/seed.ts`: seed idempotente do usuário demo (compatível com Postgres, testado só em ambiente local/dev nesta auditoria)
+- `prisma/migrations/`: migration baseline gerada nesta auditoria (2026-09-07), já aplicada em produção via `prisma migrate deploy`
+- `prisma/seed.ts`: seed idempotente do usuário demo (compatível com Postgres, já rodado com sucesso contra o banco de produção nesta auditoria)
 - `src/lib/env.ts`: leitura de variáveis de ambiente e flags derivadas
 - `src/lib/session.ts`: sessão por cookie HMAC; fallback de segredo restrito a fora de produção desde 2026-09-07
 - `src/app/api/_lib/rateLimit.ts`: rate limit simples em memória, adicionado em 2026-09-07
