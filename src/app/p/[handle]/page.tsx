@@ -18,7 +18,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
-import { ApiError, getProfile } from "@/lib/api-client";
+import { getPublicProfile } from "@/lib/server/profile";
 import type { ContributionType, PublicProfile } from "@/lib/types";
 import { formatDate, truncateAddress } from "@/lib/utils";
 
@@ -31,20 +31,23 @@ type ProfileResult =
   | { status: "not_found" }
   | { status: "error"; message: string };
 
+/**
+ * Busca o perfil direto da camada de dados (`src/lib/server/profile.ts`),
+ * sem passar por `fetch`: este é um Server Component, então chamar a
+ * própria API por HTTP seria uma volta desnecessária (e, em produção, uma
+ * fonte de bugs de resolução de URL).
+ */
 async function loadProfile(handle: string): Promise<ProfileResult> {
   try {
-    const profile = await getProfile(handle);
-    return { status: "ok", profile };
-  } catch (cause) {
-    if (cause instanceof ApiError && cause.code === "NOT_FOUND") {
+    const profile = await getPublicProfile(handle);
+    if (!profile) {
       return { status: "not_found" };
     }
+    return { status: "ok", profile };
+  } catch {
     return {
       status: "error",
-      message:
-        cause instanceof ApiError
-          ? cause.message
-          : "Não foi possível carregar este perfil agora.",
+      message: "Não foi possível carregar este perfil agora.",
     };
   }
 }

@@ -9,6 +9,7 @@
  * falha vira um `ApiError` tratável pela UI, nunca uma exceção não tratada.
  */
 
+import { getAppBaseUrl } from "@/lib/env";
 import type {
   ApiErrorCode,
   ApiResponse,
@@ -33,15 +34,17 @@ export class ApiError extends Error {
 
 /**
  * Resolve a URL de uma rota de API. No navegador, um caminho relativo já
- * basta. No servidor (Server Components), `fetch` exige uma URL absoluta:
- * usamos a mesma base de `NEXT_PUBLIC_APP_URL` (ou o padrão local) definida
- * em `app/layout.tsx`.
+ * basta. No servidor, `fetch` exige uma URL absoluta: usamos a base
+ * descoberta automaticamente por `getAppBaseUrl()` (ver `src/lib/env.ts`).
+ *
+ * Nota: Server Components que só precisam ler dados que a própria API já
+ * expõe devem preferir chamar a camada de dados diretamente (veja
+ * `src/lib/server/`), sem passar por `fetch`. Este cliente HTTP é para uso
+ * no navegador (ou em integrações externas de fato remotas).
  */
 function resolveUrl(path: string): string {
   if (typeof window !== "undefined") return path;
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
-  return `${base}${path}`;
+  return `${getAppBaseUrl()}${path}`;
 }
 
 export interface ApiFetchInit extends RequestInit {

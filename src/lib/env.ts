@@ -60,3 +60,26 @@ export function solanaAttestationMode(): "sas" | "memo" | "mock" {
   if (isDemoMode) return "mock";
   return "memo";
 }
+
+/**
+ * Descobre a URL base pública da aplicação sem exigir configuração manual.
+ * Ordem de precedência:
+ * 1. `NEXT_PUBLIC_APP_URL`, quando definida (sobrescreve a detecção automática).
+ * 2. `VERCEL_PROJECT_PRODUCTION_URL` ou `VERCEL_URL`, injetadas pela própria
+ *    Vercel em toda build (sem o esquema na frente, por isso prefixamos com
+ *    `https://`).
+ * 3. `http://localhost:PORT` (porta 3000 por padrão), só como último recurso
+ *    em desenvolvimento local.
+ */
+export function getAppBaseUrl(): string {
+  const explicit = readString(process.env.NEXT_PUBLIC_APP_URL);
+  if (explicit) return explicit.replace(/\/+$/, "");
+
+  const vercelHost =
+    readString(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
+    readString(process.env.VERCEL_URL);
+  if (vercelHost) return `https://${vercelHost}`;
+
+  const port = readString(process.env.PORT) ?? "3000";
+  return `http://localhost:${port}`;
+}

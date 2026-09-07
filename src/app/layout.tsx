@@ -3,6 +3,7 @@ import { Outfit, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
 import { SolanaProvider } from "@/components/wallet";
+import { getAppBaseUrl } from "@/lib/env";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -16,12 +17,8 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Sem variável de ambiente dedicada (fora da seção 8 do brief). Troque para
-// o domínio de produção quando o deploy estiver definido.
-const APP_URL = "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
+  metadataBase: new URL(getAppBaseUrl()),
   title: "VERITY. Seu trabalho. Verificado.",
   description:
     "Proof of Contribution: transforme contribuição digital verificável em credencial portátil, associada à sua wallet e verificável por terceiros na Solana.",

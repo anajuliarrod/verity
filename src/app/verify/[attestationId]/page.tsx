@@ -12,7 +12,7 @@ import {
 } from "@/components/app/icons";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ApiError, getAttestation } from "@/lib/api-client";
+import { getPublicAttestationView } from "@/lib/server/attestation";
 import type { AttestationPublicView } from "@/lib/types";
 import { cn, formatDateTime, truncateAddress } from "@/lib/utils";
 
@@ -25,20 +25,23 @@ type Result =
   | { status: "not_found" }
   | { status: "error"; message: string };
 
+/**
+ * Busca a attestation direto da camada de dados
+ * (`src/lib/server/attestation.ts`), sem passar por `fetch`: este é um
+ * Server Component, então chamar a própria API por HTTP seria uma volta
+ * desnecessária (e, em produção, uma fonte de bugs de resolução de URL).
+ */
 async function loadAttestation(id: string): Promise<Result> {
   try {
-    const view = await getAttestation(id);
-    return { status: "ok", view };
-  } catch (cause) {
-    if (cause instanceof ApiError && cause.code === "NOT_FOUND") {
+    const view = await getPublicAttestationView(id);
+    if (!view) {
       return { status: "not_found" };
     }
+    return { status: "ok", view };
+  } catch {
     return {
       status: "error",
-      message:
-        cause instanceof ApiError
-          ? cause.message
-          : "Não foi possível verificar esta credencial agora.",
+      message: "Não foi possível verificar esta credencial agora.",
     };
   }
 }
