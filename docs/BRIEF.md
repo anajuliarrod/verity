@@ -7,6 +7,18 @@
 Este arquivo é a fonte da verdade. **Leia antes de escrever qualquer código.**
 Não altere este arquivo sem instrução explícita do orquestrador.
 
+## Descrição do Projeto
+
+A VERITY é uma plataforma de reputação verificável voltada à validação de contribuições acadêmicas e profissionais de estudantes, especialmente aqueles em início de carreira. Ao longo da graduação, estudantes acumulam experiências em projetos acadêmicos, hackathons, iniciativas universitárias, comunidades e projetos open source. Entretanto, essas evidências permanecem distribuídas em diferentes plataformas e, frequentemente, dependem da autodeclaração do próprio estudante, dificultando a comprovação de suas competências.
+
+**O problema** afeta principalmente estudantes que ainda não possuem experiência profissional formal, mas já desenvolveram habilidades por meio de experiências práticas. Nesse contexto, a VERITY propõe transformar contribuições digitais verificáveis em Proof of Contribution, permitindo que atividades como Pull Requests, commits e issues sejam associadas à identidade do usuário e apresentadas como credenciais verificáveis.
+
+O **funcionamento da plataforma** combina fontes externas de evidência, como o GitHub, com um mecanismo de verificação responsável por analisar a autoria e as características da contribuição. Após a validação, a contribuição pode ser registrada como uma attestation vinculada à wallet do estudante. Dessa forma, a plataforma cria uma camada de reputação portátil, permitindo que estudantes apresentem não apenas quais competências possuem, mas também evidências das atividades que realizaram.
+
+**A Solana é utilizada** como infraestrutura para as attestations devido à sua capacidade de realizar registros de forma rápida, com baixo custo e alta escalabilidade. A proposta mantém os dados detalhados e sensíveis fora da blockchain, utilizando a rede para registrar as informações necessárias à verificação e à portabilidade das credenciais.
+
+Durante o desenvolvimento do projeto, ferramentas de Inteligência Artificial foram utilizadas como apoio à ideação, pesquisa, estruturação da solução, desenvolvimento do protótipo, revisão textual e organização da documentação. A IA atuou como ferramenta de suporte ao processo, enquanto as decisões de produto, validação e definição da solução permaneceram sob responsabilidade da equipe.
+
 ---
 
 ## 0. Decisões já tomadas (não re-decidir)
